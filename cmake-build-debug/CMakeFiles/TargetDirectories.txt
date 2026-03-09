@@ -1,3 +1,0 @@
-/mnt/c/Users/macie/CLionProjects/chess_engine/cmake-build-debug/CMakeFiles/chess_engine.dir
-/mnt/c/Users/macie/CLionProjects/chess_engine/cmake-build-debug/CMakeFiles/edit_cache.dir
-/mnt/c/Users/macie/CLionProjects/chess_engine/cmake-build-debug/CMakeFiles/rebuild_cache.dir
