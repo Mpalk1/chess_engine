@@ -4,13 +4,15 @@
 typedef uint64_t u64;
 typedef uint8_t  u8;
 
-enum class Color {
+enum class Color
+{
   none,
   white,
   black
 };
 
-enum class PieceType {
+enum class PieceType
+{
   none = 0,
   white_pawn = 1,
   white_knight,
@@ -26,7 +28,10 @@ enum class PieceType {
   black_king,
 };
 
-enum class MoveType {
+constexpr int PieceVal(PieceType p) { return static_cast<int>(p); }
+
+enum class MoveType
+{
   normal,
   capture,
   double_pawn_push,
@@ -43,7 +48,8 @@ enum class MoveType {
   promotion_knight_capture,
 };
 
-enum class MoveFlag : u8 {
+enum class MoveFlag : u8
+{
   none             = 0,
   check            = 1 << 0,
   double_check     = 1 << 1,
@@ -55,21 +61,26 @@ enum class MoveFlag : u8 {
   discovered_check = 1 << 7,
 };
 
-inline MoveFlag operator|(MoveFlag a, MoveFlag b) {
+inline MoveFlag operator|(MoveFlag a, MoveFlag b)
+{
   return static_cast<MoveFlag>(static_cast<u8>(a) | static_cast<u8>(b));
 }
-inline MoveFlag operator&(MoveFlag a, MoveFlag b) {
+inline MoveFlag operator&(MoveFlag a, MoveFlag b)
+{
   return static_cast<MoveFlag>(static_cast<u8>(a) & static_cast<u8>(b));
 }
-inline MoveFlag& operator|=(MoveFlag& a, MoveFlag b) {
+inline MoveFlag& operator|=(MoveFlag& a, MoveFlag b)
+{
   return a = a | b;
 }
-inline bool has_flag(MoveFlag flags, MoveFlag query) {
+inline bool has_flag(MoveFlag flags, MoveFlag query)
+{
   return (flags & query) != MoveFlag::none;
 }
 
 
-enum class Square : u8 {
+enum class Square : u8
+{
   A1=0,  B1,  C1,  D1,  E1,  F1,  G1,  H1,
   A2=8,  B2,  C2,  D2,  E2,  F2,  G2,  H2,
   A3=16, B3,  C3,  D3,  E3,  F3,  G3,  H3,
@@ -84,6 +95,7 @@ enum class Square : u8 {
 
 inline int rank(Square s) { return static_cast<u8>(s) >> 3; }  // 0-7
 inline int file(Square s) { return static_cast<u8>(s) & 7;  }  // 0-7
-inline Square make_square(const int file, const int rank) {
+inline Square make_square(const int file, const int rank)
+{
   return static_cast<Square>(rank * 8 + file);
 }

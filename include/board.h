@@ -1,19 +1,41 @@
 ﻿#pragma once
 #include <array>
+#include <string>
+#include "move_list.h"
 #include "types.h"
-#include <vector>
-#include "move.h"
 
-class Board {
-public:
-  Board();
-  std::vector<Move> GetLegalMoves();
-
-private:
-  std::vector<Move> GetPseudoLegalMoves();
+struct Board
+{
   std::array<u64, 12> bitboards{};
+  MoveList move_list{};
+  const std::string starting_fen
+  {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"};
+  u64 occupied_squares() const
+  {
+    u64 occupied = 0ULL;
+    for (const auto& bb : bitboards)
+    {
+      occupied |= bb;
+    }
+    return occupied;
+  }
+  Board();
+  void Clear();
+  void ReadFen(const std::string& fen);
+  MoveList GetLegalMoves();
+  MoveList GetPseudoLegalMoves();
+  void Print() const;
+private:
+  void GenetatePawnMoves();
+  void GenerateKnightMoves();
+  void GenerateBishopMoves();
+  void GenerateRookMoves();
+  void GenerateQueenMoves();
+  void GenerateKingMoves();
 };
 
+
+bool IsNumber(char c);
 
 /* bitboards mapping -> eg. bit 10 is C2
     A  B  C  D  E  F  G  H
