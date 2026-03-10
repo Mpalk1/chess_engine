@@ -5,9 +5,12 @@ set(CMAKE_CXX_STANDARD 20)
 
 include_directories(include)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 add_executable(chess_engine src/main.cpp
         include/board.h
         include/types.h
         src/board.cpp
         include/move.h
-        include/move_list.h)
+        include/move_list.h
+        include/bitboard.h)

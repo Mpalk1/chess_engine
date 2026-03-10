@@ -13,8 +13,7 @@ enum class Color
 
 enum class PieceType
 {
-  none = 0,
-  white_pawn = 1,
+  white_pawn = 0,
   white_knight,
   white_bishop,
   white_rook,
@@ -26,6 +25,7 @@ enum class PieceType
   black_rook,
   black_queen,
   black_king,
+  none = 255,
 };
 
 constexpr int PieceVal(PieceType p) { return static_cast<int>(p); }
@@ -99,3 +99,23 @@ inline Square make_square(const int file, const int rank)
 {
   return static_cast<Square>(rank * 8 + file);
 }
+
+// Files
+constexpr u64 FILE_A = 0x0101010101010101ULL;
+constexpr u64 FILE_B = FILE_A << 1;
+constexpr u64 FILE_C = FILE_A << 2;
+constexpr u64 FILE_D = FILE_A << 3;
+constexpr u64 FILE_E = FILE_A << 4;
+constexpr u64 FILE_F = FILE_A << 5;
+constexpr u64 FILE_G = FILE_A << 6;
+constexpr u64 FILE_H = FILE_A << 7;
+
+// Ranks
+constexpr u64 RANK_1 = 0xFFULL;
+constexpr u64 RANK_2 = RANK_1 << 8;
+constexpr u64 RANK_3 = RANK_1 << 16;
+constexpr u64 RANK_4 = RANK_1 << 24;
+constexpr u64 RANK_5 = RANK_1 << 32;
+constexpr u64 RANK_6 = RANK_1 << 40;
+constexpr u64 RANK_7 = RANK_1 << 48;
+constexpr u64 RANK_8 = RANK_1 << 56;

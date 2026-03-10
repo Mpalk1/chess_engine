@@ -1,9 +1,30 @@
 ﻿#include "board.h"
 #include <cassert>
 #include <iostream>
-
 #include <bitset>
 #include <unordered_map>
+#include <vector>
+
+#include "bitboard.h"
+
+namespace
+{
+void AppendPawnPushMoves(std::vector<Move>& moves, const u64 targets,
+                         const int advance, const PieceType piece,
+                         const MoveType type)
+{
+  for (int to = 0; to < 64; ++to)
+  {
+    if ((targets & (1ULL << to)) == 0)
+    {
+      continue;
+    }
+
+    const int from = to - advance;
+    moves.emplace_back(static_cast<Square>(from), static_cast<Square>(to), piece, type);
+  }
+}
+}
 
 Board::Board()
 {
@@ -49,7 +70,7 @@ void Board::ReadFen(const std::string& fen)
       const int rank = 7 - (ctr / 8);
       const int file = ctr % 8;
       const int square = rank * 8 + file;
-      bitboards[PieceVal(it->second)-1] |= (1ULL << square); // -1 because PieceType::none is 0
+      bitboards[PieceVal(it->second)] |= (1ULL << square);
       ctr++;
     }
   }
@@ -65,9 +86,43 @@ MoveList Board::GetPseudoLegalMoves()
   return MoveList{};
 }
 
-void Board::GenetatePawnMoves()
+void Board::GeneratePawnMoves()
 {
+  move_list.clear();
+  std::vector<Move> generated_moves;
+  generated_moves.reserve(16);
 
+  const auto empty_squares = GetEmptySquares();
+
+  if (current_turn == Color::white)
+  {
+    const auto white_pawns = bitboards[PieceVal(PieceType::white_pawn)];
+    const auto single_push = shift(white_pawns, Direction::north, 1) & empty_squares;
+    const auto double_ready = shift(white_pawns & RANK_2, Direction::north, 1) & empty_squares;
+    const auto double_push = shift(double_ready, Direction::north, 1) & empty_squares;
+
+    AppendPawnPushMoves(generated_moves, single_push, 8,
+                        PieceType::white_pawn, MoveType::normal);
+    AppendPawnPushMoves(generated_moves, double_push, 16,
+                        PieceType::white_pawn, MoveType::double_pawn_push);
+  }
+  else
+  {
+    const auto black_pawns = bitboards[PieceVal(PieceType::black_pawn)];
+    const auto single_push = shift(black_pawns, Direction::south, 1) & empty_squares;
+    const auto double_ready = shift(black_pawns & RANK_7, Direction::south, 1) & empty_squares;
+    const auto double_push = shift(double_ready, Direction::south, 1) & empty_squares;
+
+    AppendPawnPushMoves(generated_moves, single_push, -8,
+                        PieceType::black_pawn, MoveType::normal);
+    AppendPawnPushMoves(generated_moves, double_push, -16,
+                        PieceType::black_pawn, MoveType::double_pawn_push);
+  }
+
+  for (const auto& move : generated_moves)
+  {
+    move_list.push(move);
+  }
 }
 void Board::GenerateKnightMoves()
 {

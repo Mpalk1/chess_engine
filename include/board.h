@@ -10,14 +10,16 @@ struct Board
   MoveList move_list{};
   const std::string starting_fen
   {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"};
-  u64 occupied_squares() const
+  Color current_turn = Color::white;
+  Move previous_move{}; //for unmaking a move
+  u64 GetEmptySquares() const
   {
     u64 occupied = 0ULL;
     for (const auto& bb : bitboards)
     {
       occupied |= bb;
     }
-    return occupied;
+    return ~occupied;
   }
   Board();
   void Clear();
@@ -25,8 +27,8 @@ struct Board
   MoveList GetLegalMoves();
   MoveList GetPseudoLegalMoves();
   void Print() const;
-private:
-  void GenetatePawnMoves();
+// private:
+  void GeneratePawnMoves();
   void GenerateKnightMoves();
   void GenerateBishopMoves();
   void GenerateRookMoves();
