@@ -28,7 +28,7 @@ enum class PieceType
   none = 255,
 };
 
-constexpr int PieceVal(PieceType p) { return static_cast<int>(p); }
+constexpr int piece_val(PieceType p) { return static_cast<int>(p); }
 
 enum class MoveType
 {
@@ -98,6 +98,14 @@ inline int file(Square s) { return static_cast<u8>(s) & 7;  }  // 0-7
 inline Square make_square(const int file, const int rank)
 {
   return static_cast<Square>(rank * 8 + file);
+}
+
+inline std::string square_to_string(Square s) {
+  if (s == Square::none) return "none";
+  std::string str = "";
+  str += static_cast<char>('a' + file(s));
+  str += static_cast<char>('1' + rank(s));
+  return str;
 }
 
 // Files

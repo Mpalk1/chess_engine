@@ -8,13 +8,13 @@ struct Board
 {
   std::array<u64, 12> bitboards{};
   MoveList move_list{};
-  const std::string starting_fen
-  {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"};
-  Color current_turn = Color::white;
+  const std::string starting_fen{"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"};
+  Color current_turn{Color::white};
   Move previous_move{}; //for unmaking a move
-  u64 GetEmptySquares() const
+  std::array<u64, 64> knight_attacks{};
+  u64 get_empty_squares() const
   {
-    u64 occupied = 0ULL;
+    u64 occupied{0ULL};
     for (const auto& bb : bitboards)
     {
       occupied |= bb;
@@ -22,22 +22,24 @@ struct Board
     return ~occupied;
   }
   Board();
-  void Clear();
-  void ReadFen(const std::string& fen);
-  MoveList GetLegalMoves();
-  MoveList GetPseudoLegalMoves();
-  void Print() const;
+  void clear();
+  void read_fen(const std::string& fen);
+  MoveList get_legal_moves();
+  MoveList get_pseudo_legal_moves();
+  u64 get_squares(Color color) const;
+  void print() const;
 // private:
-  void GeneratePawnMoves();
-  void GenerateKnightMoves();
-  void GenerateBishopMoves();
-  void GenerateRookMoves();
-  void GenerateQueenMoves();
-  void GenerateKingMoves();
+  void generate_pawn_moves();
+  void generate_knight_moves();
+  void generate_bishop_moves();
+  void generate_rook_moves();
+  void generate_queen_moves();
+  void generate_king_moves();
+  constexpr void init_knight_attacks();
 };
 
 
-bool IsNumber(char c);
+bool is_number(char c);
 
 /* bitboards mapping -> eg. bit 10 is C2
     A  B  C  D  E  F  G  H
@@ -51,3 +53,7 @@ bool IsNumber(char c);
 1|  0  1  2  3  4  5  6  7
  */ //every bitboard represents one type of piece black or white so
 //    bitboards[0] represents all the white pawns
+
+
+
+

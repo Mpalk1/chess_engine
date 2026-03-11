@@ -3,28 +3,8 @@
 #include <iostream>
 #include <bitset>
 #include <unordered_map>
-#include <vector>
 
 #include "bitboard.h"
-
-namespace
-{
-void AppendPawnPushMoves(std::vector<Move>& moves, const u64 targets,
-                         const int advance, const PieceType piece,
-                         const MoveType type)
-{
-  for (int to = 0; to < 64; ++to)
-  {
-    if ((targets & (1ULL << to)) == 0)
-    {
-      continue;
-    }
-
-    const int from = to - advance;
-    moves.emplace_back(static_cast<Square>(from), static_cast<Square>(to), piece, type);
-  }
-}
-}
 
 Board::Board()
 {
@@ -32,15 +12,16 @@ Board::Board()
   {
     bitboards[i] = 0ULL;
   }
+  init_knight_attacks();
 }
 
-void Board::Clear()
+void Board::clear()
 {
   std::fill(std::begin(bitboards), std::end(bitboards),0ULL);
 }
 
 
-void Board::ReadFen(const std::string& fen)
+void Board::read_fen(const std::string& fen)
 {
   assert(!fen.empty());
 
@@ -51,7 +32,7 @@ void Board::ReadFen(const std::string& fen)
     { 'p', PieceType::black_pawn   }, { 'n', PieceType::black_knight },
     { 'b', PieceType::black_bishop }, { 'r', PieceType::black_rook   },
     { 'q', PieceType::black_queen  }, { 'k', PieceType::black_king   },
-};
+  };
 
   int ctr = 0;
   for (const char c : fen)
@@ -59,7 +40,7 @@ void Board::ReadFen(const std::string& fen)
     if (c == ' ') break; // todo: add info for castling rights, en passant
     if (c == '/') continue;
 
-    if (IsNumber(c))
+    if (is_number(c))
     {
       ctr += c - '0';
       continue;
@@ -70,82 +51,82 @@ void Board::ReadFen(const std::string& fen)
       const int rank = 7 - (ctr / 8);
       const int file = ctr % 8;
       const int square = rank * 8 + file;
-      bitboards[PieceVal(it->second)] |= (1ULL << square);
+      bitboards[piece_val(it->second)] |= (1ULL << square);
       ctr++;
     }
   }
 }
 
-MoveList Board::GetLegalMoves()
+MoveList Board::get_legal_moves()
 {
   return MoveList{};
 }
 
-MoveList Board::GetPseudoLegalMoves()
+MoveList Board::get_pseudo_legal_moves()
 {
   return MoveList{};
 }
 
-void Board::GeneratePawnMoves()
+void Board::generate_pawn_moves()
 {
   move_list.clear();
-  std::vector<Move> generated_moves;
-  generated_moves.reserve(16);
 
-  const auto empty_squares = GetEmptySquares();
+  const auto empty_squares = get_empty_squares();
 
   if (current_turn == Color::white)
   {
-    const auto white_pawns = bitboards[PieceVal(PieceType::white_pawn)];
+    const auto white_pawns = bitboards[piece_val(PieceType::white_pawn)];
     const auto single_push = shift(white_pawns, Direction::north, 1) & empty_squares;
     const auto double_ready = shift(white_pawns & RANK_2, Direction::north, 1) & empty_squares;
     const auto double_push = shift(double_ready, Direction::north, 1) & empty_squares;
 
-    AppendPawnPushMoves(generated_moves, single_push, 8,
-                        PieceType::white_pawn, MoveType::normal);
-    AppendPawnPushMoves(generated_moves, double_push, 16,
-                        PieceType::white_pawn, MoveType::double_pawn_push);
+    move_list.add_pawn_move(single_push, 8, PieceType::white_pawn, MoveType::normal);
+    move_list.add_pawn_move(double_push, 16, PieceType::white_pawn, MoveType::double_pawn_push);
   }
   else
   {
-    const auto black_pawns = bitboards[PieceVal(PieceType::black_pawn)];
+    const auto black_pawns = bitboards[piece_val(PieceType::black_pawn)];
     const auto single_push = shift(black_pawns, Direction::south, 1) & empty_squares;
     const auto double_ready = shift(black_pawns & RANK_7, Direction::south, 1) & empty_squares;
     const auto double_push = shift(double_ready, Direction::south, 1) & empty_squares;
 
-    AppendPawnPushMoves(generated_moves, single_push, -8,
-                        PieceType::black_pawn, MoveType::normal);
-    AppendPawnPushMoves(generated_moves, double_push, -16,
-                        PieceType::black_pawn, MoveType::double_pawn_push);
-  }
-
-  for (const auto& move : generated_moves)
-  {
-    move_list.push(move);
+    move_list.add_pawn_move(single_push, -8, PieceType::black_pawn, MoveType::normal);
+    move_list.add_pawn_move(double_push, -16, PieceType::black_pawn, MoveType::double_pawn_push);
   }
 }
-void Board::GenerateKnightMoves()
+void Board::generate_knight_moves()
+{
+  const auto friendly_squares = get_squares(current_turn == Color::white ? Color::white : Color::black);
+  auto knights = bitboards[piece_val(current_turn == Color::white ? PieceType::white_knight : PieceType::black_knight)];
+  while (knights) {
+    int from_idx = std::countr_zero(knights);
+    const Square from = static_cast<Square>(from_idx);
+
+    const u64 moves = knight_attacks[from_idx] & ~friendly_squares;
+
+    move_list.add_piece_moves(from, moves, current_turn == Color::white ? PieceType::white_knight : PieceType::black_knight);
+
+    knights &= knights - 1; // clear the first bit set to 1 counting from LSB
+  }
+}
+void Board::generate_bishop_moves()
 {
 
 }
-void Board::GenerateBishopMoves()
+void Board::generate_rook_moves()
 {
 
 }
-void Board::GenerateRookMoves()
+void Board::generate_queen_moves()
 {
 
 }
-void Board::GenerateQueenMoves()
-{
-
-}
-void Board::GenerateKingMoves()
+void Board::generate_king_moves()
 {
 
 }
 
-void Board::Print() const
+void Board::print() const
 {
   constexpr char pieces[] = "PNBRQKpnbrqk";
 
@@ -169,15 +150,58 @@ void Board::Print() const
     }
     std::cout << '\n';
   }
-  std::cout << "\n   A B C D E F G H\n";
+  std::cout << "   A B C D E F G H\n\n";
 
-  for (int i = 0; i < 12; i++)
-    std::cout << "bitboard[" << i << "] = "
-              << std::bitset<64>(bitboards[i]) << '\n';
+  // for (int i = 0; i < 12; i++)
+  //   std::cout << "bitboard[" << i << "] = "
+  //             << std::bitset<64>(bitboards[i]) << '\n';
+}
+
+u64 Board::get_squares(Color color) const
+{
+  u64 res{0ULL};
+  if (color == Color::white)
+  {
+    for (size_t i{0}; i < 6; ++i)
+    {
+      res |= bitboards[i];
+    }
+  }
+  else
+  {
+    for (size_t i{6}; i < 12; ++i)
+    {
+      res |= bitboards[i];
+    }
+  }
+  return res;
+}
+
+constexpr void Board::init_knight_attacks()
+{
+  for (int s = 0; s < 64; ++s)
+  {
+    u64 b = 1ULL << s;
+    u64 attacks = 0;
+
+    attacks |= (b << 17) & ~FILE_A;
+    attacks |= (b << 15) & ~FILE_H;
+    attacks |= (b >> 17) & ~FILE_H;
+    attacks |= (b >> 15) & ~FILE_A;
+
+    attacks |= (b << 10) & ~(FILE_A | FILE_B);
+    attacks |= (b << 6)  & ~(FILE_G | FILE_H);
+    attacks |= (b >> 10) & ~(FILE_G | FILE_H);
+    attacks |= (b >> 6)  & ~(FILE_A | FILE_B);
+
+    knight_attacks[s] = attacks;
+  }
 }
 
 
-bool IsNumber(char c)
+
+
+bool is_number(char c)
 {
   return std::isdigit(c);
 }

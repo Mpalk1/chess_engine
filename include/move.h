@@ -44,5 +44,23 @@ struct Move
   bool is_castle() const { return type == MoveType::kingside_castle || type == MoveType::queenside_castle;}
   bool is_check()     const { return has_flag(flags, MoveFlag::check); }
   bool is_checkmate() const { return has_flag(flags, MoveFlag::checkmate); }
+  void print() const
+  {
+    if (piece == PieceType::none) {
+      return;
+    }
+
+    std::string move_str = square_to_string(from) + std::string{"->"} + square_to_string(to);
+
+    // if (is_promotion()) {
+    //   if (type == MoveType::promotion_queen || type == MoveType::promotion_queen_capture) move_str += "q";
+    //   else if (type == MoveType::promotion_rook || type == MoveType::promotion_rook_capture) move_str += "r";
+    //   else if (type == MoveType::promotion_bishop || type == MoveType::promotion_bishop_capture) move_str += "b";
+    //   else if (type == MoveType::promotion_knight || type == MoveType::promotion_knight_capture) move_str += "n";
+    // }
+
+    std::cout << move_str << "\n";
+  }
 };
+
 
