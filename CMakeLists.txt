@@ -13,4 +13,7 @@ add_executable(chess_engine src/main.cpp
         src/board.cpp
         include/move.h
         include/move_list.h
-        include/bitboard.h)
+        include/bitboard.h
+        src/bitboard.cpp
+        include/board_list.h
+        src/board_list.cpp)

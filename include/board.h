@@ -1,12 +1,14 @@
 ﻿#pragma once
 #include <array>
 #include <string>
+
+#include "board_list.h"
 #include "move_list.h"
 #include "types.h"
 
 struct Board
 {
-  std::array<u64, 12> bitboards{};
+  BoardList bitboards{};
   MoveList move_list{};
   const std::string starting_fen{"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"};
   Color current_turn{Color::white};
@@ -14,12 +16,7 @@ struct Board
   std::array<u64, 64> knight_attacks{};
   u64 get_empty_squares() const
   {
-    u64 occupied{0ULL};
-    for (const auto& bb : bitboards)
-    {
-      occupied |= bb;
-    }
-    return ~occupied;
+    return bitboards.empty();
   }
   Board();
   void clear();

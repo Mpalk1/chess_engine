@@ -1,0 +1,57 @@
+﻿#include "board_list.h"
+
+Bitboard& BoardList::operator[](PieceType piece)
+{
+  return bitboards[piece_val(piece)];
+}
+
+const Bitboard& BoardList::operator[](PieceType piece) const
+{
+  return bitboards[piece_val(piece)];
+}
+
+const Bitboard& BoardList::operator[](int idx) const
+{
+  return bitboards[idx];
+}
+
+void BoardList::clear()
+{
+  for (auto& bb : bitboards)
+  {
+    bb = Bitboard{0ULL};
+  }
+}
+
+u64 BoardList::occupied() const
+{
+  u64 occ = 0ULL;
+  for (const auto& bb : bitboards)
+  {
+    occ |= bb.get();
+  }
+  return occ;
+}
+
+u64 BoardList::occupied(Color color) const
+{
+  if (color == Color::none)
+  {
+    return 0ULL;
+  }
+
+  u64 occ = 0ULL;
+  const int begin = (color == Color::white) ? 0 : 6;
+  const int end = (color == Color::white) ? 6 : 12;
+  for (int i = begin; i < end; ++i)
+  {
+    occ |= bitboards[i].get();
+  }
+  return occ;
+}
+
+u64 BoardList::empty() const
+{
+  return ~occupied();
+}
+

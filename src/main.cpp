@@ -1,5 +1,4 @@
-﻿#include <bitset>
-#include <iostream>
+﻿#include <iostream>
 #include "board.h"
 
 int main()
@@ -11,4 +10,5 @@ int main()
   board.generate_pawn_moves();
   board.generate_knight_moves();
   board.move_list.print();
+  const auto& ref = std::addressof(board);
 }
