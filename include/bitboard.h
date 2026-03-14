@@ -16,7 +16,8 @@ struct Bitboard
   Bitboard() = default;
   explicit Bitboard(u64 b) : bitboard(b) {}
   u64 get() const;
-  void shift(Direction dir, int times);
+  Bitboard shift(Direction dir, int times) const;
+  void shift_inplace(Direction dir, int times);
   void print_as_bits() const;
   void is_bit_at(const u64& x) const;
   void is_bit_at(const Square& square) const;

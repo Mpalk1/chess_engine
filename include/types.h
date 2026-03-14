@@ -1,8 +1,9 @@
 ﻿#pragma once
 #include <cstdint>
+#include <string>
 
 typedef uint64_t u64;
-typedef uint8_t  u8;
+typedef uint8_t u8;
 
 enum class Color
 {
@@ -50,14 +51,14 @@ enum class MoveType
 
 enum class MoveFlag : u8
 {
-  none             = 0,
-  check            = 1 << 0,
-  double_check     = 1 << 1,
-  checkmate        = 1 << 2,
-  stalemate        = 1 << 3,
-  fork             = 1 << 4,
-  pin              = 1 << 5,
-  skewer           = 1 << 6,
+  none = 0,
+  check = 1 << 0,
+  double_check = 1 << 1,
+  checkmate = 1 << 2,
+  stalemate = 1 << 3,
+  fork = 1 << 4,
+  pin = 1 << 5,
+  skewer = 1 << 6,
   discovered_check = 1 << 7,
 };
 
@@ -69,40 +70,95 @@ inline MoveFlag operator&(MoveFlag a, MoveFlag b)
 {
   return static_cast<MoveFlag>(static_cast<u8>(a) & static_cast<u8>(b));
 }
-inline MoveFlag& operator|=(MoveFlag& a, MoveFlag b)
-{
-  return a = a | b;
-}
-inline bool has_flag(MoveFlag flags, MoveFlag query)
-{
-  return (flags & query) != MoveFlag::none;
-}
+inline MoveFlag &operator|=(MoveFlag &a, MoveFlag b) { return a = a | b; }
+inline bool has_flag(MoveFlag flags, MoveFlag query) { return (flags & query) != MoveFlag::none; }
 
 
 enum class Square : u8
 {
-  A1=0,  B1,  C1,  D1,  E1,  F1,  G1,  H1,
-  A2=8,  B2,  C2,  D2,  E2,  F2,  G2,  H2,
-  A3=16, B3,  C3,  D3,  E3,  F3,  G3,  H3,
-  A4=24, B4,  C4,  D4,  E4,  F4,  G4,  H4,
-  A5=32, B5,  C5,  D5,  E5,  F5,  G5,  H5,
-  A6=40, B6,  C6,  D6,  E6,  F6,  G6,  H6,
-  A7=48, B7,  C7,  D7,  E7,  F7,  G7,  H7,
-  A8=56, B8,  C8,  D8,  E8,  F8,  G8,  H8,
-  none=255
+  A1 = 0,
+  B1,
+  C1,
+  D1,
+  E1,
+  F1,
+  G1,
+  H1,
+  A2 = 8,
+  B2,
+  C2,
+  D2,
+  E2,
+  F2,
+  G2,
+  H2,
+  A3 = 16,
+  B3,
+  C3,
+  D3,
+  E3,
+  F3,
+  G3,
+  H3,
+  A4 = 24,
+  B4,
+  C4,
+  D4,
+  E4,
+  F4,
+  G4,
+  H4,
+  A5 = 32,
+  B5,
+  C5,
+  D5,
+  E5,
+  F5,
+  G5,
+  H5,
+  A6 = 40,
+  B6,
+  C6,
+  D6,
+  E6,
+  F6,
+  G6,
+  H6,
+  A7 = 48,
+  B7,
+  C7,
+  D7,
+  E7,
+  F7,
+  G7,
+  H7,
+  A8 = 56,
+  B8,
+  C8,
+  D8,
+  E8,
+  F8,
+  G8,
+  H8,
+  none = 255
 };
 
 
-inline int rank(Square s) { return static_cast<u8>(s) >> 3; }  // 0-7
-inline int file(Square s) { return static_cast<u8>(s) & 7;  }  // 0-7
-inline Square make_square(const int file, const int rank)
+inline int rank(Square s) { return static_cast<u8>(s) >> 3; } // 0-7
+inline int file(Square s) { return static_cast<u8>(s) & 7; } // 0-7
+inline Square make_square(const int file, const int rank) { return static_cast<Square>(rank * 8 + file); }
+inline Square make_square(u64 bb)
 {
-  return static_cast<Square>(rank * 8 + file);
+  if (bb == 0)
+    return Square::none; // no bits set
+  return static_cast<Square>(std::countr_zero(bb));
 }
 
-inline std::string square_to_string(Square s) {
-  if (s == Square::none) return "none";
-  std::string str = "";
+inline std::string square_to_string(Square s)
+{
+  if (s == Square::none)
+    return "none";
+  std::string str{};
   str += static_cast<char>('a' + file(s));
   str += static_cast<char>('1' + rank(s));
   return str;
