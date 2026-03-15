@@ -113,3 +113,5 @@ bool Bitboard::operator!=(const Bitboard &rhs) const { return !(*this == rhs); }
 Bitboard::operator bool() const { return bitboard != 0ULL; }
 
 Bitboard Bitboard::operator~() const { return Bitboard{~bitboard}; }
+
+void Bitboard::clear() { bitboard = 0ULL; }

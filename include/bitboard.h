@@ -21,6 +21,7 @@ struct Bitboard
   void print_as_bits() const;
   void is_bit_at(const u64& x) const;
   void is_bit_at(const Square& square) const;
+  void clear();
 
   Bitboard& operator<<=(int times);
   Bitboard& operator>>=(int times);

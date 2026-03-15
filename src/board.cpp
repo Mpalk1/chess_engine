@@ -1,5 +1,6 @@
 ﻿#include "board.h"
 #include <bit>
+#include <bitset>
 #include <cassert>
 #include <iostream>
 #include <unordered_map>
@@ -7,7 +8,11 @@
 #include "move_list.h"
 #include "types.h"
 
-Board::Board() { init_knight_attacks(); }
+Board::Board()
+{
+  init_knight_attacks();
+  init_king_attacks();
+}
 
 void Board::clear() { bitboards.clear(); }
 
@@ -59,47 +64,38 @@ void Board::generate_pawn_moves()
   const auto empty_squares = get_empty_squares();
   auto pawns =
       (current_turn == Color::white) ? bitboards[PieceType::white_pawn].get() : bitboards[PieceType::black_pawn].get();
-  const auto dir = current_turn == Color::white ? Direction::north : Direction::south;
-  const auto piece_type = current_turn == Color::white ? PieceType::white_pawn : PieceType::black_pawn;
+  const auto dir = (current_turn == Color::white) ? Direction::north : Direction::south;
+  const auto piece_type = (current_turn == Color::white) ? PieceType::white_pawn : PieceType::black_pawn;
+  const auto start_rank = (current_turn == Color::white) ? RANK_2 : RANK_7;
+
   while (pawns)
   {
     const auto from = std::countr_zero(pawns);
-    pawns &= pawns - 1;
-    std::cout << from << std::endl;
-    const auto single_push = Bitboard{1ULL << from}.shift(dir, 1) & empty_squares;
-    const auto double_push = Bitboard{1ULL << from}.shift(dir, 2) & empty_squares & RANK_2;
-    std::cout << "sraka" << std::endl;
-    auto s = single_push.get();
-    single_push.print_as_bits();
-    while (s != 0ULL)
+
+    // single push
+    Bitboard single_push_bb = Bitboard{1ULL << from}.shift(dir, 1) & empty_squares;
+    u64 s = single_push_bb.get();
+    while (s)
     {
-      std::cout << "in while" << std::endl;
-      move_list.add(from, std::countr_zero(s), piece_type, MoveType::normal);
+      const auto to = std::countr_zero(s);
+      move_list.add(1ULL << from, 1ULL << to, piece_type, MoveType::normal);
       s &= s - 1;
-      std::cout << "added to move list" << std::endl;
-      single_push.print_as_bits();
     }
-    std::cout << "ended while" << std::endl;
+
+    if ((1ULL << from) & start_rank)
+    {
+      Bitboard double_push_bb = Bitboard{1ULL << from}.shift(dir, 2) & empty_squares;
+
+      u64 d = double_push_bb.get();
+      while (d)
+      {
+        const auto to = std::countr_zero(d);
+        move_list.add(1ULL << from, 1ULL << to, piece_type, MoveType::double_pawn_push);
+        d &= d - 1;
+      }
+    }
+    pawns &= pawns - 1;
   }
-
-  // if (current_turn == Color::white)
-  // {
-  //   auto white_pawns = bitboards[PieceType::white_pawn];
-  //   const auto single_push = white_pawns.shift(Direction::north, 1) & empty_squares;
-  //   const auto double_push = ((white_pawns & RANK_2).shift(Direction::north, 1)) & empty_squares;
-
-  //   move_list.add_pawn_move(single_push.get(), 8, PieceType::white_pawn, MoveType::normal);
-  //   move_list.add_pawn_move(double_push.get(), 16, PieceType::white_pawn, MoveType::double_pawn_push);
-  // }
-  // else
-  // {
-  //   const auto black_pawns = bitboards[PieceType::black_pawn];
-  //   const auto single_push = black_pawns.shift(Direction::south, 1) & empty_squares;
-  //   const auto double_push = (black_pawns & RANK_7).shift(Direction::south, 2) & empty_squares;
-
-  //   move_list.add_pawn_move(single_push.get(), -8, PieceType::black_pawn, MoveType::normal);
-  //   move_list.add_pawn_move(double_push.get(), -16, PieceType::black_pawn, MoveType::double_pawn_push);
-  // }
 }
 void Board::generate_knight_moves()
 {
@@ -118,10 +114,28 @@ void Board::generate_knight_moves()
     knights &= knights - 1; // clear the first bit set to 1 counting from LSB
   }
 }
-void Board::generate_bishop_moves() {}
+void Board::generate_bishop_moves()
+{
+  const auto piece_type = current_turn == Color::white ? PieceType::white_bishop : PieceType::black_bishop;
+  const auto bishops = bitboards[piece_type];
+  const auto empty_squares = get_empty_squares();
+}
 void Board::generate_rook_moves() {}
 void Board::generate_queen_moves() {}
-void Board::generate_king_moves() {}
+void Board::generate_king_moves()
+{
+  const auto friendly_squares = get_squares(current_turn == Color::white ? Color::white : Color::black);
+  const auto piece_type = current_turn == Color::white ? PieceType::white_king : PieceType::black_king;
+  auto king = bitboards[piece_type].get();
+  const auto from = std::countr_zero(king);
+  auto moves = king_attacks[from] & ~friendly_squares;
+  while (moves)
+  {
+    const auto move_idx = std::countr_zero(moves);
+    move_list.add(from, 1ULL << move_idx, piece_type, MoveType::normal);
+    moves &= moves - 1;
+  }
+}
 
 void Board::print() const
 {
@@ -174,6 +188,31 @@ constexpr void Board::init_knight_attacks()
     attacks |= (b >> 6) & ~(FILE_A | FILE_B);
 
     knight_attacks[s] = attacks;
+  }
+}
+
+constexpr void Board::init_king_attacks()
+{
+  for (int s = 0; s < 64; ++s)
+  {
+    u64 b = 1ULL << s;
+    u64 attacks = 0;
+
+    // vertical
+    attacks |= (b << 8);
+    attacks |= (b >> 8);
+
+    // horizontal
+    attacks |= (b << 1) & ~FILE_A;
+    attacks |= (b >> 1) & ~FILE_H;
+
+    // diagonals
+    attacks |= (b << 9) & ~FILE_A;
+    attacks |= (b << 7) & ~FILE_H;
+    attacks |= (b >> 9) & ~FILE_H;
+    attacks |= (b >> 7) & ~FILE_A;
+
+    king_attacks[s] = attacks;
   }
 }
 

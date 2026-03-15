@@ -14,6 +14,7 @@ struct Board
   Color current_turn{Color::white};
   Move previous_move{}; //for unmaking a move
   std::array<u64, 64> knight_attacks{};
+  std::array<u64, 64> king_attacks{};
   u64 get_empty_squares() const
   {
     return bitboards.empty();
@@ -33,6 +34,7 @@ struct Board
   void generate_queen_moves();
   void generate_king_moves();
   constexpr void init_knight_attacks();
+  constexpr void init_king_attacks();
 };
 
 

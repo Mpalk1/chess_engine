@@ -2,8 +2,8 @@
 #include <cstdint>
 #include <string>
 
-typedef uint64_t u64;
-typedef uint8_t u8;
+using u64 = uint64_t;
+using u8 = uint8_t;
 
 enum class Color
 {
