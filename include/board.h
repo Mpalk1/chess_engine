@@ -33,7 +33,7 @@ struct Board
   void clear();
   void read_fen(const std::string &fen);
   void make_move(Square from, Square to);
-  void make_move(Move &move);
+  void make_move(const Move &move);
   void unmake_move(Square from, Square to);
   void unmake_move(Move& move);
   MoveList get_legal_moves();

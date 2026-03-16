@@ -11,24 +11,24 @@ struct Move
   MoveType type;
   MoveFlag flags;
 
-  u8 prev_castling_rights; // bitmask: bit0=WK, bit1=WQ, bit2=BK, bit3=BQ
-  Square prev_en_passant_sq; // 255 = none or square index
-  u8 prev_halfmove_clock; // for 50-move rule
+  u8 castling_rights; // bitmask: bit0=WK, bit1=WQ, bit2=BK, bit3=BQ
+  Square enpassant_sq; // 255 = none or square index
+  u8 halfmove_clock; // for 50-move rule
 
   Move() :
       from(Square::A1), to(Square::A1), piece(PieceType::none), captured(PieceType::none), type(MoveType::normal),
-      flags(MoveFlag::none), prev_castling_rights(0), prev_en_passant_sq(Square::none), prev_halfmove_clock(0)
+      flags(MoveFlag::none), castling_rights(0), enpassant_sq(Square::none), halfmove_clock(0)
   {}
 
   Move(Square from, Square to, PieceType piece, MoveType type = MoveType::normal) :
       from(from), to(to), piece(piece), captured(PieceType::none), type(type), flags(MoveFlag::none),
-      prev_castling_rights(0), prev_en_passant_sq(Square::none), prev_halfmove_clock(0)
+      castling_rights(0), enpassant_sq(Square::none), halfmove_clock(0)
   {}
 
   Move(Square from, Square to, PieceType piece, MoveType type, PieceType captured,
        u8 castling_rights, Square en_passant_sq, u8 halfmove_clock) :
       from(from), to(to), piece(piece), captured(captured), type(type), flags(MoveFlag::none),
-      prev_castling_rights(castling_rights), prev_en_passant_sq(en_passant_sq), prev_halfmove_clock(halfmove_clock)
+      castling_rights(castling_rights), enpassant_sq(en_passant_sq), halfmove_clock(halfmove_clock)
   {}
 
   bool is_capture() const { return captured != PieceType::none; }

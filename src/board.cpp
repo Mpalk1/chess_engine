@@ -64,8 +64,6 @@ void Board::make_move(Square from, Square to)
   current_turn = (current_turn == Color::white) ? Color::black : Color::white;
 }
 
-void Board::make_move(Move &move) {}
-
 void Board::unmake_move(Move &move) {}
 
 void Board::unmake_move(Square from, Square to)
@@ -100,33 +98,49 @@ void Board::generate_pawn_moves()
   const auto cap_right = (current_turn == Color::white) ? Direction::north_east : Direction::south_west;
   const auto piece_type = (current_turn == Color::white) ? PieceType::white_pawn : PieceType::black_pawn;
   const auto start_rank = (current_turn == Color::white) ? RANK_2 : RANK_7;
+  const auto captured_pawn = (current_turn == Color::white) ? PieceType::black_pawn : PieceType::white_pawn;
 
   while (pawns)
   {
     const auto from = std::countr_zero(pawns);
     const Bitboard from_bb{1ULL << from};
 
-    // --- quiet moves (unchanged) ---
+    // --- single push ---
     Bitboard single_push_bb = from_bb.shift(dir, 1) & empty_squares;
     u64 s = single_push_bb.get();
     while (s)
     {
       const auto to = std::countr_zero(s);
-      move_list.add(make_square(from), make_square(to), piece_type, MoveType::normal,
-                    PieceType::none, castling_rights, en_passant_square, halfmove_clock);
+      const bool is_promo = (current_turn == Color::white) ? (to >= 56) : (to < 8);
+      if (is_promo)
+      {
+        for (const auto promo_type : {MoveType::promotion_queen, MoveType::promotion_rook,
+                                       MoveType::promotion_bishop, MoveType::promotion_knight})
+        {
+          move_list.add(make_square(from), make_square(to), piece_type, promo_type,
+                        PieceType::none, castling_rights, Square::none, 0);
+        }
+      }
+      else
+      {
+        move_list.add(make_square(from), make_square(to), piece_type, MoveType::normal,
+                      PieceType::none, castling_rights, Square::none, 0);
+      }
       s &= s - 1;
     }
 
+    // --- double push ---
     if (from_bb.get() & start_rank)
     {
-      // only allow double push if the square in between is empty
       Bitboard double_push_bb = from_bb.shift(dir, 2) & empty_squares & (single_push_bb.shift(dir, 1));
       u64 d = double_push_bb.get();
       while (d)
       {
         const auto to = std::countr_zero(d);
+        // The en passant square is the square the pawn passed through
+        const auto ep_sq = static_cast<Square>((current_turn == Color::white) ? from + 8 : from - 8);
         move_list.add(make_square(from), make_square(to), piece_type, MoveType::double_pawn_push,
-                      PieceType::none, castling_rights, en_passant_square, halfmove_clock);
+                      PieceType::none, castling_rights, ep_sq, 0);
         d &= d - 1;
       }
     }
@@ -137,9 +151,47 @@ void Board::generate_pawn_moves()
     while (a)
     {
       const auto to = std::countr_zero(a);
-      move_list.add(make_square(from), make_square(to), piece_type, MoveType::capture,
-                    bitboards.piece_at(make_square(to)), castling_rights, en_passant_square, halfmove_clock);
+      const auto to_sq = make_square(to);
+      const auto captured_piece = bitboards.piece_at(to_sq);
+
+      // Update castling rights if capturing a rook on its starting square
+      u8 new_castling = castling_rights;
+      if      (to == 7)  new_castling &= ~castle_white_kingside;   // H1
+      else if (to == 0)  new_castling &= ~castle_white_queenside;  // A1
+      else if (to == 63) new_castling &= ~castle_black_kingside;   // H8
+      else if (to == 56) new_castling &= ~castle_black_queenside;  // A8
+
+      const bool is_promo = (current_turn == Color::white) ? (to >= 56) : (to < 8);
+      if (is_promo)
+      {
+        for (const auto promo_type : {MoveType::promotion_queen_capture, MoveType::promotion_rook_capture,
+                                       MoveType::promotion_bishop_capture, MoveType::promotion_knight_capture})
+        {
+          move_list.add(make_square(from), to_sq, piece_type, promo_type,
+                        captured_piece, new_castling, Square::none, 0);
+        }
+      }
+      else
+      {
+        move_list.add(make_square(from), to_sq, piece_type, MoveType::capture,
+                      captured_piece, new_castling, Square::none, 0);
+      }
       a &= a - 1;
+    }
+
+    // --- en passant ---
+    if (en_passant_square != Square::none)
+    {
+      const u64 ep_bb = 1ULL << static_cast<int>(en_passant_square);
+      const u64 ep_attacks = (from_bb.shift(cap_left, 1) | from_bb.shift(cap_right, 1)).get() & ep_bb;
+      u64 ep = ep_attacks;
+      while (ep)
+      {
+        const auto to = std::countr_zero(ep);
+        move_list.add(make_square(from), make_square(to), piece_type, MoveType::en_passant,
+                      captured_pawn, castling_rights, Square::none, 0);
+        ep &= ep - 1;
+      }
     }
 
     pawns &= pawns - 1;
@@ -158,7 +210,7 @@ void Board::generate_knight_moves()
 
     move_list.add_moves(from, moves,
                          current_turn == Color::white ? PieceType::white_knight : PieceType::black_knight,
-                         bitboards, castling_rights, en_passant_square, halfmove_clock);
+                         bitboards, castling_rights, Square::none, halfmove_clock);
 
     knights &= knights - 1; // clear the first bit set to 1 counting from LSB
   }
@@ -203,7 +255,7 @@ void Board::generate_bishop_moves()
     }
 
     attacks &= ~friendly;
-    move_list.add_moves(make_square(from_idx), attacks, piece_type, bitboards, castling_rights, en_passant_square, halfmove_clock);
+    move_list.add_moves(make_square(from_idx), attacks, piece_type, bitboards, castling_rights, Square::none, halfmove_clock);
 
     bishops &= bishops - 1;
   }
@@ -218,6 +270,19 @@ void Board::generate_rook_moves()
   while (rooks)
   {
     const int from_idx = std::countr_zero(rooks);
+
+    // Rook leaving its starting square removes the corresponding castling right
+    u8 new_castling = castling_rights;
+    if (piece_type == PieceType::white_rook)
+    {
+      if      (from_idx == 7) new_castling &= ~castle_white_kingside;   // H1
+      else if (from_idx == 0) new_castling &= ~castle_white_queenside;  // A1
+    }
+    else
+    {
+      if      (from_idx == 63) new_castling &= ~castle_black_kingside;   // H8
+      else if (from_idx == 56) new_castling &= ~castle_black_queenside;  // A8
+    }
 
     u64 attacks = 0;
 
@@ -248,7 +313,7 @@ void Board::generate_rook_moves()
     }
 
     attacks &= ~friendly;
-    move_list.add_moves(make_square(from_idx), attacks, piece_type, bitboards, castling_rights, en_passant_square, halfmove_clock);
+    move_list.add_moves(make_square(from_idx), attacks, piece_type, bitboards, new_castling, Square::none, halfmove_clock);
 
     rooks &= rooks - 1;
   }
@@ -293,7 +358,7 @@ void Board::generate_queen_moves()
     }
 
     attacks &= ~friendly;
-    move_list.add_moves(make_square(from_idx), attacks, piece_type, bitboards, castling_rights, en_passant_square, halfmove_clock);
+    move_list.add_moves(make_square(from_idx), attacks, piece_type, bitboards, castling_rights, Square::none, halfmove_clock);
     queens &= queens - 1;
   }
 }
@@ -303,13 +368,76 @@ void Board::generate_king_moves()
   const auto piece_type = current_turn == Color::white ? PieceType::white_king : PieceType::black_king;
   auto king = bitboards[piece_type].get();
   const auto from = std::countr_zero(king);
+
+  // King moving removes all castling rights for its color
+  u8 king_castling = castling_rights;
+  if (current_turn == Color::white)
+    king_castling &= ~(castle_white_kingside | castle_white_queenside);
+  else
+    king_castling &= ~(castle_black_kingside | castle_black_queenside);
+
   auto moves = king_attacks[from] & ~friendly_squares;
   while (moves)
   {
     const auto move_idx = std::countr_zero(moves);
-    move_list.add(make_square(from), make_square(move_idx), piece_type, MoveType::normal,
-                  bitboards.piece_at(make_square(move_idx)), castling_rights, en_passant_square, halfmove_clock);
+    const auto to_sq = make_square(move_idx);
+    const auto captured = bitboards.piece_at(to_sq);
+    const auto type = (captured != PieceType::none) ? MoveType::capture : MoveType::normal;
+
+    // If capturing a rook on its starting square, remove that castling right too
+    u8 move_castling = king_castling;
+    if      (move_idx == 7)  move_castling &= ~castle_white_kingside;   // H1
+    else if (move_idx == 0)  move_castling &= ~castle_white_queenside;  // A1
+    else if (move_idx == 63) move_castling &= ~castle_black_kingside;   // H8
+    else if (move_idx == 56) move_castling &= ~castle_black_queenside;  // A8
+
+    const u8 new_halfmove = (captured != PieceType::none) ? 0 : static_cast<u8>(halfmove_clock + 1);
+
+    move_list.add(make_square(from), to_sq, piece_type, type, captured,
+                  move_castling, Square::none, new_halfmove);
     moves &= moves - 1;
+  }
+
+  // --- castling ---
+  const u64 occupied = ~get_empty_squares();
+
+  if (current_turn == Color::white && from == static_cast<int>(Square::E1))
+  {
+    // Kingside: F1 (5) and G1 (6) must be empty, white rook must be on H1 (7)
+    if ((castling_rights & castle_white_kingside) &&
+        !(occupied & 0x60ULL) &&
+        (bitboards[PieceType::white_rook].get() & 0x80ULL))
+    {
+      move_list.add(Square::E1, Square::G1, piece_type, MoveType::kingside_castle,
+                    PieceType::none, king_castling, Square::none, static_cast<u8>(halfmove_clock + 1));
+    }
+    // Queenside: B1 (1), C1 (2), D1 (3) must be empty, white rook must be on A1 (0)
+    if ((castling_rights & castle_white_queenside) &&
+        !(occupied & 0xEULL) &&
+        (bitboards[PieceType::white_rook].get() & 0x1ULL))
+    {
+      move_list.add(Square::E1, Square::C1, piece_type, MoveType::queenside_castle,
+                    PieceType::none, king_castling, Square::none, static_cast<u8>(halfmove_clock + 1));
+    }
+  }
+  else if (current_turn == Color::black && from == static_cast<int>(Square::E8))
+  {
+    // Kingside: F8 (61) and G8 (62) must be empty, black rook must be on H8 (63)
+    if ((castling_rights & castle_black_kingside) &&
+        !(occupied & 0x6000000000000000ULL) &&
+        (bitboards[PieceType::black_rook].get() & 0x8000000000000000ULL))
+    {
+      move_list.add(Square::E8, Square::G8, piece_type, MoveType::kingside_castle,
+                    PieceType::none, king_castling, Square::none, static_cast<u8>(halfmove_clock + 1));
+    }
+    // Queenside: B8 (57), C8 (58), D8 (59) must be empty, black rook must be on A8 (56)
+    if ((castling_rights & castle_black_queenside) &&
+        !(occupied & 0xE00000000000000ULL) &&
+        (bitboards[PieceType::black_rook].get() & 0x100000000000000ULL))
+    {
+      move_list.add(Square::E8, Square::C8, piece_type, MoveType::queenside_castle,
+                    PieceType::none, king_castling, Square::none, static_cast<u8>(halfmove_clock + 1));
+    }
   }
 }
 
@@ -532,7 +660,8 @@ void Board::read_fen(const std::string &fen)
     {
       if (c == 'K')
         castling_rights |= castle_white_kingside;
-      else if (c == 'Q')
+      else if (c == 'Q'
+)
         castling_rights |= castle_white_queenside;
       else if (c == 'k')
         castling_rights |= castle_black_kingside;
@@ -548,4 +677,88 @@ void Board::read_fen(const std::string &fen)
 
   if (!fields[5].empty())
     fullmove_number = std::stoi(std::string(fields[5]));
+}
+
+void Board::make_move(const Move &move)
+{
+  const u64 from_bb = 1ULL << static_cast<int>(move.from);
+  const u64 to_bb   = 1ULL << static_cast<int>(move.to);
+
+  // Lift the moving piece off its source square
+  bitboards[move.piece] &= ~from_bb;
+
+  if (move.type == MoveType::kingside_castle)
+  {
+    bitboards[move.piece] |= to_bb;
+    if (current_turn == Color::white)
+    {
+      bitboards[PieceType::white_rook] &= ~(1ULL << static_cast<int>(Square::H1));
+      bitboards[PieceType::white_rook] |=  (1ULL << static_cast<int>(Square::F1));
+    }
+    else
+    {
+      bitboards[PieceType::black_rook] &= ~(1ULL << static_cast<int>(Square::H8));
+      bitboards[PieceType::black_rook] |=  (1ULL << static_cast<int>(Square::F8));
+    }
+  }
+  else if (move.type == MoveType::queenside_castle)
+  {
+    bitboards[move.piece] |= to_bb;
+    if (current_turn == Color::white)
+    {
+      bitboards[PieceType::white_rook] &= ~(1ULL << static_cast<int>(Square::A1));
+      bitboards[PieceType::white_rook] |=  (1ULL << static_cast<int>(Square::D1));
+    }
+    else
+    {
+      bitboards[PieceType::black_rook] &= ~(1ULL << static_cast<int>(Square::A8));
+      bitboards[PieceType::black_rook] |=  (1ULL << static_cast<int>(Square::D8));
+    }
+  }
+  else if (move.type == MoveType::en_passant)
+  {
+    bitboards[move.piece] |= to_bb;
+    // The captured pawn sits one rank behind the destination square
+    const int captured_sq = (current_turn == Color::white)
+        ? static_cast<int>(move.to) - 8
+        : static_cast<int>(move.to) + 8;
+    bitboards[move.captured] &= ~(1ULL << captured_sq);
+  }
+  else if (move.is_promotion())
+  {
+    if (move.captured != PieceType::none)
+      bitboards[move.captured] &= ~to_bb;
+
+    const bool is_white = (current_turn == Color::white);
+    PieceType promo_piece;
+    switch (move.type)
+    {
+      case MoveType::promotion_queen:
+      case MoveType::promotion_queen_capture:
+        promo_piece = is_white ? PieceType::white_queen  : PieceType::black_queen;  break;
+      case MoveType::promotion_rook:
+      case MoveType::promotion_rook_capture:
+        promo_piece = is_white ? PieceType::white_rook   : PieceType::black_rook;   break;
+      case MoveType::promotion_bishop:
+      case MoveType::promotion_bishop_capture:
+        promo_piece = is_white ? PieceType::white_bishop : PieceType::black_bishop; break;
+      default:
+        promo_piece = is_white ? PieceType::white_knight : PieceType::black_knight; break;
+    }
+    bitboards[promo_piece] |= to_bb;
+  }
+  else
+  {
+    if (move.captured != PieceType::none)
+      bitboards[move.captured] &= ~to_bb;
+    bitboards[move.piece] |= to_bb;
+  }
+
+  // Apply the post-move state that was computed during move generation
+  castling_rights   = move.castling_rights;
+  en_passant_square = move.enpassant_sq;
+  halfmove_clock    = move.halfmove_clock;
+  if (current_turn == Color::black)
+    fullmove_number++;
+  current_turn = (current_turn == Color::white) ? Color::black : Color::white;
 }

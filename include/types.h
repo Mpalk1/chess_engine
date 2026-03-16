@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <cstdint>
 #include <string>
+#include <bit>
 
 using u64 = uint64_t;
 using u8 = uint8_t;
@@ -189,3 +190,9 @@ constexpr u64 RANK_5 = RANK_1 << 32;
 constexpr u64 RANK_6 = RANK_1 << 40;
 constexpr u64 RANK_7 = RANK_1 << 48;
 constexpr u64 RANK_8 = RANK_1 << 56;
+
+// Castle bitmask constants (bit0=WK, bit1=WQ, bit2=BK, bit3=BQ)
+constexpr u8 CASTLE_WHITE_KINGSIDE  = 1 << 0;
+constexpr u8 CASTLE_WHITE_QUEENSIDE = 1 << 1;
+constexpr u8 CASTLE_BLACK_KINGSIDE  = 1 << 2;
+constexpr u8 CASTLE_BLACK_QUEENSIDE = 1 << 3;
