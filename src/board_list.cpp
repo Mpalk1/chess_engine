@@ -55,3 +55,16 @@ u64 BoardList::empty() const
   return ~occupied();
 }
 
+PieceType BoardList::piece_at(Square s) const
+{
+  if (s == Square::none)
+    return PieceType::none;
+  const u64 mask = 1ULL << static_cast<u8>(s);
+  for (int i = 0; i < 12; ++i)
+  {
+    if (bitboards[i].get() & mask)
+      return static_cast<PieceType>(i);
+  }
+  return PieceType::none;
+}
+

@@ -14,5 +14,6 @@ struct BoardList
   u64 occupied() const;
   u64 occupied(Color color) const;
   u64 empty() const;
+  PieceType piece_at(Square s) const;
 
 };

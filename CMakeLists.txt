@@ -7,13 +7,6 @@ include_directories(include)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_executable(chess_engine src/main.cpp
-        include/board.h
-        include/types.h
-        src/board.cpp
-        include/move.h
-        include/move_list.h
-        include/bitboard.h
-        src/bitboard.cpp
-        include/board_list.h
-        src/board_list.cpp)
+file(GLOB_RECURSE SOURCES src/*.cpp)
+
+add_executable(chess_engine ${SOURCES})
