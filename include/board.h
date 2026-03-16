@@ -8,13 +8,23 @@
 
 struct Board
 {
+  static constexpr u8 castle_white_kingside = 1 << 0;
+  static constexpr u8 castle_white_queenside = 1 << 1;
+  static constexpr u8 castle_black_kingside = 1 << 2;
+  static constexpr u8 castle_black_queenside = 1 << 3;
+
   BoardList bitboards{};
   MoveList move_list{};
   const std::string starting_fen{"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"};
   Color current_turn{Color::white};
+  u8 castling_rights{castle_white_kingside | castle_white_queenside | castle_black_kingside | castle_black_queenside};
+  Square en_passant_square{Square::none};
+  u8 halfmove_clock{0};
+  int fullmove_number{1};
   Move previous_move{}; //for unmaking a move
   std::array<u64, 64> knight_attacks{};
   std::array<u64, 64> king_attacks{};
+  
   u64 get_empty_squares() const
   {
     return bitboards.empty();
@@ -22,6 +32,7 @@ struct Board
   Board();
   void clear();
   void read_fen(const std::string& fen);
+  void make_move(Square from, Square to);
   MoveList get_legal_moves();
   MoveList get_pseudo_legal_moves();
   u64 get_squares(Color color) const;

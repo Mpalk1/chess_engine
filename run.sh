@@ -2,7 +2,7 @@
 
 set -e
 echo "building..."
-cmake -B build
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cd build
 echo "compiling..."
 make

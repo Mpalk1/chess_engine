@@ -1,20 +1,53 @@
 ﻿
-#include "bitboard.h"
+#include <iostream>
+#include <string>
 #include "board.h"
 #include "types.h"
+
+// Parse "e2e4" into from/to squares. Returns false if the input is invalid.
+static bool parse_move(const std::string& input, Square& from, Square& to)
+{
+  if (input.size() < 4)
+    return false;
+
+  const int from_file = input[0] - 'a';
+  const int from_rank = input[1] - '1';
+  const int to_file   = input[2] - 'a';
+  const int to_rank   = input[3] - '1';
+
+  if (from_file < 0 || from_file > 7 || from_rank < 0 || from_rank > 7 ||
+      to_file   < 0 || to_file   > 7 || to_rank   < 0 || to_rank   > 7)
+    return false;
+
+  from = make_square(from_file, from_rank);
+  to   = make_square(to_file,   to_rank);
+  return true;
+}
 
 int main()
 {
   Board board{};
   board.read_fen(board.starting_fen);
-  // board.current_turn = Color::black;
-  // board.bitboards[PieceType::white_king].clear();
-  // auto x = 1ULL << 35;
-  board.bitboards[PieceType::white_king].shift_inplace(Direction::north, 3);
   board.print();
-  board.generate_pawn_moves();
-  board.generate_knight_moves();
-  board.generate_king_moves();
-  board.move_list.print();
-  const auto& ref = std::addressof(board);
+
+  std::string input;
+  while (true)
+  {
+    std::cout << (board.current_turn == Color::white ? "White" : "Black") << " to move: ";
+    if (!std::getline(std::cin, input))
+      break;
+
+    if (input == "quit" || input == "q")
+      break;
+
+    Square from, to;
+    if (!parse_move(input, from, to))
+    {
+      std::cout << "Invalid input. Use format e2e4.\n";
+      continue;
+    }
+
+    board.make_move(from, to);
+    board.print();
+  }
 }

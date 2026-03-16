@@ -6,7 +6,11 @@ enum class Direction
   north = 8,
   south = -north,
   east = 1,
-  west = -east
+  west = -east,
+  north_east = 9,
+  north_west = 7,
+  south_east = -north_west,
+  south_west = -north_east
 };
 
 struct Bitboard
