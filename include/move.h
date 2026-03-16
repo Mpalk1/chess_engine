@@ -25,6 +25,12 @@ struct Move
       prev_castling_rights(0), prev_en_passant_sq(Square::none), prev_halfmove_clock(0)
   {}
 
+  Move(Square from, Square to, PieceType piece, MoveType type, PieceType captured,
+       u8 castling_rights, Square en_passant_sq, u8 halfmove_clock) :
+      from(from), to(to), piece(piece), captured(captured), type(type), flags(MoveFlag::none),
+      prev_castling_rights(castling_rights), prev_en_passant_sq(en_passant_sq), prev_halfmove_clock(halfmove_clock)
+  {}
+
   bool is_capture() const { return captured != PieceType::none; }
   bool is_promotion() const
   {
@@ -40,11 +46,12 @@ struct Move
   {
     if (piece == PieceType::none)
     {
+      // std::cout << "piece type is none\n";
       return;
     }
 
     std::string move_str = square_to_string(from) + std::string{"->"} + square_to_string(to);
-
+    // std::cout << "printing moves\n";
     // if (is_promotion()) {
     //   if (type == MoveType::promotion_queen || type == MoveType::promotion_queen_capture) move_str += "q";
     //   else if (type == MoveType::promotion_rook || type == MoveType::promotion_rook_capture) move_str += "r";

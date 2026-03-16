@@ -3,6 +3,7 @@
 #include <string>
 
 #include "board_list.h"
+#include "move.h"
 #include "move_list.h"
 #include "types.h"
 
@@ -21,23 +22,26 @@ struct Board
   Square en_passant_square{Square::none};
   u8 halfmove_clock{0};
   int fullmove_number{1};
-  Move previous_move{}; //for unmaking a move
+  Move previous_move{}; // for unmaking a move
   std::array<u64, 64> knight_attacks{};
   std::array<u64, 64> king_attacks{};
-  
-  u64 get_empty_squares() const
-  {
-    return bitboards.empty();
-  }
+  std::array<std::array<u64, 64>, 8>
+      ray_attacks{}; // each table is for each direction - 0 - north rays, 1 - north east, etc
+
+  u64 get_empty_squares() const { return bitboards.empty(); }
   Board();
   void clear();
-  void read_fen(const std::string& fen);
+  void read_fen(const std::string &fen);
   void make_move(Square from, Square to);
+  void make_move(Move &move);
+  void unmake_move(Square from, Square to);
+  void unmake_move(Move& move);
   MoveList get_legal_moves();
-  MoveList get_pseudo_legal_moves();
+  const MoveList& get_pseudo_legal_moves();
   u64 get_squares(Color color) const;
   void print() const;
-// private:
+  void print_moves() const { move_list.print(); }
+  // private:
   void generate_pawn_moves();
   void generate_knight_moves();
   void generate_bishop_moves();
@@ -46,6 +50,7 @@ struct Board
   void generate_king_moves();
   constexpr void init_knight_attacks();
   constexpr void init_king_attacks();
+  constexpr void init_ray_attacks();
 };
 
 
@@ -63,7 +68,3 @@ bool is_number(char c);
 1|  0  1  2  3  4  5  6  7
  */ //every bitboard represents one type of piece black or white so
 //    bitboards[0] represents all the white pawns
-
-
-
-

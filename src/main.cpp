@@ -1,6 +1,7 @@
 ﻿
 #include <iostream>
 #include <string>
+#include <cstring>
 #include "board.h"
 #include "types.h"
 
@@ -24,30 +25,51 @@ static bool parse_move(const std::string& input, Square& from, Square& to)
   return true;
 }
 
-int main()
+int main(int argc, char** argv)
 {
   Board board{};
   board.read_fen(board.starting_fen);
-  board.print();
 
-  std::string input;
-  while (true)
+  if (argc > 1 && strcmp(argv[1], "-v") == 0)
   {
-    std::cout << (board.current_turn == Color::white ? "White" : "Black") << " to move: ";
-    if (!std::getline(std::cin, input))
-      break;
-
-    if (input == "quit" || input == "q")
-      break;
-
-    Square from, to;
-    if (!parse_move(input, from, to))
-    {
-      std::cout << "Invalid input. Use format e2e4.\n";
-      continue;
-    }
-
-    board.make_move(from, to);
     board.print();
+    std::string input;
+    while (true)
+    {
+      auto& pseudo_moves = board.get_pseudo_legal_moves();
+
+      std::cout << (board.current_turn == Color::white ? "White" : "Black") << " to move: ";
+      if (!std::getline(std::cin, input))
+        break;
+
+      if (input == "quit" || input == "q")
+        break;
+
+      Square from, to;
+      if (!parse_move(input, from, to))
+      {
+        std::cout << "Invalid input. Use format e2e4.\n";
+        continue;
+      }
+
+      bool legal = false;
+      for (size_t i = 0; i < pseudo_moves.count; ++i)
+      {
+        if (pseudo_moves[i].from == from && pseudo_moves[i].to == to)
+        {
+          legal = true;
+          break;
+        }
+      }
+
+      if (!legal)
+      {
+        std::cout << "Illegal move. Try again.\n";
+        continue;
+      }
+
+      board.make_move(from, to);
+      board.print();
+    }
   }
 }

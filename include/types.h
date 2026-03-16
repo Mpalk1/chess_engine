@@ -147,6 +147,12 @@ enum class Square : u8
 inline int rank(Square s) { return static_cast<u8>(s) >> 3; } // 0-7
 inline int file(Square s) { return static_cast<u8>(s) & 7; } // 0-7
 inline Square make_square(const int file, const int rank) { return static_cast<Square>(rank * 8 + file); }
+inline Square make_square(int sq)
+{
+  if (sq == 0)
+    return Square::none;
+  return static_cast<Square>(sq);
+}
 inline Square make_square(u64 bb)
 {
   if (bb == 0)

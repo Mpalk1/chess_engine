@@ -1,6 +1,5 @@
 ﻿#include "board.h"
 #include <bit>
-#include <bitset>
 #include <cassert>
 #include <cctype>
 #include <iostream>
@@ -14,6 +13,7 @@ Board::Board()
 {
   init_knight_attacks();
   init_king_attacks();
+  init_ray_attacks();
 }
 
 void Board::clear()
@@ -64,9 +64,28 @@ void Board::make_move(Square from, Square to)
   current_turn = (current_turn == Color::white) ? Color::black : Color::white;
 }
 
+void Board::make_move(Move &move) {}
+
+void Board::unmake_move(Move &move) {}
+
+void Board::unmake_move(Square from, Square to)
+{
+  
+}
+
 MoveList Board::get_legal_moves() { return MoveList{}; }
 
-MoveList Board::get_pseudo_legal_moves() { return MoveList{}; }
+const MoveList& Board::get_pseudo_legal_moves()
+{
+  move_list.clear();
+  generate_pawn_moves();
+  generate_knight_moves();
+  generate_bishop_moves();
+  generate_king_moves();
+  generate_queen_moves();
+  generate_rook_moves();
+  return move_list;
+}
 
 void Board::generate_pawn_moves()
 {
@@ -93,7 +112,8 @@ void Board::generate_pawn_moves()
     while (s)
     {
       const auto to = std::countr_zero(s);
-      move_list.add(1ULL << from, 1ULL << to, piece_type, MoveType::normal);
+      move_list.add(make_square(from), make_square(to), piece_type, MoveType::normal,
+                    PieceType::none, castling_rights, en_passant_square, halfmove_clock);
       s &= s - 1;
     }
 
@@ -105,7 +125,8 @@ void Board::generate_pawn_moves()
       while (d)
       {
         const auto to = std::countr_zero(d);
-        move_list.add(1ULL << from, 1ULL << to, piece_type, MoveType::double_pawn_push);
+        move_list.add(make_square(from), make_square(to), piece_type, MoveType::double_pawn_push,
+                      PieceType::none, castling_rights, en_passant_square, halfmove_clock);
         d &= d - 1;
       }
     }
@@ -116,7 +137,8 @@ void Board::generate_pawn_moves()
     while (a)
     {
       const auto to = std::countr_zero(a);
-      move_list.add(1ULL << from, 1ULL << to, piece_type, MoveType::capture);
+      move_list.add(make_square(from), make_square(to), piece_type, MoveType::capture,
+                    bitboards.piece_at(make_square(to)), castling_rights, en_passant_square, halfmove_clock);
       a &= a - 1;
     }
 
@@ -129,13 +151,14 @@ void Board::generate_knight_moves()
   auto knights = bitboards[current_turn == Color::white ? PieceType::white_knight : PieceType::black_knight].get();
   while (knights)
   {
-    int from_idx = std::countr_zero(knights);
-    const auto from = static_cast<Square>(from_idx);
+    auto from_idx = std::countr_zero(knights);
+    const auto from = make_square(from_idx);
 
     const u64 moves = knight_attacks[from_idx] & ~friendly_squares;
 
-    move_list.add_piece_moves(from, moves,
-                              current_turn == Color::white ? PieceType::white_knight : PieceType::black_knight);
+    move_list.add_moves(from, moves,
+                         current_turn == Color::white ? PieceType::white_knight : PieceType::black_knight,
+                         bitboards, castling_rights, en_passant_square, halfmove_clock);
 
     knights &= knights - 1; // clear the first bit set to 1 counting from LSB
   }
@@ -143,18 +166,136 @@ void Board::generate_knight_moves()
 void Board::generate_bishop_moves()
 {
   const auto piece_type = current_turn == Color::white ? PieceType::white_bishop : PieceType::black_bishop;
-  const auto bishops = bitboards[piece_type];
-  const auto empty_squares = get_empty_squares();
+  auto bishops = bitboards[piece_type].get();
+  const u64 occupied = ~get_empty_squares();
+  const u64 friendly = get_squares(current_turn == Color::white ? Color::white : Color::black);
+
+  while (bishops)
+  {
+    const int from_idx = std::countr_zero(bishops);
+
+    u64 attacks = 0;
+
+    for (const auto& dir : {1, 7})
+    {
+      const u64 ray = ray_attacks[dir][from_idx];
+      const u64 blockers = ray & occupied;
+      if (blockers)
+      {
+        const int first_blocker = std::countr_zero(blockers);
+        attacks |= ray ^ ray_attacks[dir][first_blocker];
+      }
+      else
+        attacks |= ray;
+    }
+
+    for (const auto& dir : {3, 5})
+    {
+      const u64 ray = ray_attacks[dir][from_idx];
+      const u64 blockers = ray & occupied;
+      if (blockers)
+      {
+        const int first_blocker = 63 - std::countl_zero(blockers);
+        attacks |= ray ^ ray_attacks[dir][first_blocker];
+      }
+      else
+        attacks |= ray;
+    }
+
+    attacks &= ~friendly;
+    move_list.add_moves(make_square(from_idx), attacks, piece_type, bitboards, castling_rights, en_passant_square, halfmove_clock);
+
+    bishops &= bishops - 1;
+  }
 }
-void Board::generate_rook_moves() {
+void Board::generate_rook_moves()
+{
   const auto piece_type = current_turn == Color::white ? PieceType::white_rook : PieceType::black_rook;
-  const auto rooks = bitboards[piece_type];
-  const auto empty_squares = get_empty_squares();
+  auto rooks = bitboards[piece_type].get();
+  const u64 occupied = ~get_empty_squares();
+  const u64 friendly = get_squares(current_turn == Color::white ? Color::white : Color::black);
+
+  while (rooks)
+  {
+    const int from_idx = std::countr_zero(rooks);
+
+    u64 attacks = 0;
+
+    for (int dir : {0, 2})
+    {
+      const u64 ray = ray_attacks[dir][from_idx];
+      const u64 blockers = ray & occupied;
+      if (blockers)
+      {
+        const int first_blocker = std::countr_zero(blockers);
+        attacks |= ray ^ ray_attacks[dir][first_blocker];
+      }
+      else
+        attacks |= ray;
+    }
+
+    for (int dir : {4, 6})
+    {
+      const u64 ray = ray_attacks[dir][from_idx];
+      const u64 blockers = ray & occupied;
+      if (blockers)
+      {
+        const int first_blocker = 63 - std::countl_zero(blockers);
+        attacks |= ray ^ ray_attacks[dir][first_blocker];
+      }
+      else
+        attacks |= ray;
+    }
+
+    attacks &= ~friendly;
+    move_list.add_moves(make_square(from_idx), attacks, piece_type, bitboards, castling_rights, en_passant_square, halfmove_clock);
+
+    rooks &= rooks - 1;
+  }
 }
-void Board::generate_queen_moves() {
+void Board::generate_queen_moves()
+{
   const auto piece_type = current_turn == Color::white ? PieceType::white_queen : PieceType::black_queen;
-  const auto queens = bitboards[piece_type];
-  const auto empty_squares = get_empty_squares();
+  auto queens = bitboards[piece_type].get();
+  const u64 occupied = ~get_empty_squares();
+  const u64 friendly = get_squares(current_turn == Color::white ? Color::white : Color::black);
+
+  while (queens)
+  {
+    const int from_idx = std::countr_zero(queens);
+
+    u64 attacks = 0;
+
+    for (int dir : {0, 1, 2, 7})
+    {
+      const u64 ray = ray_attacks[dir][from_idx];
+      const u64 blockers = ray & occupied;
+      if (blockers)
+      {
+        const int first_blocker = std::countr_zero(blockers);
+        attacks |= ray ^ ray_attacks[dir][first_blocker];
+      }
+      else
+        attacks |= ray;
+    }
+
+    for (int dir : {3, 4, 5, 6})
+    {
+      const u64 ray = ray_attacks[dir][from_idx];
+      const u64 blockers = ray & occupied;
+      if (blockers)
+      {
+        const int first_blocker = 63 - std::countl_zero(blockers);
+        attacks |= ray ^ ray_attacks[dir][first_blocker];
+      }
+      else
+        attacks |= ray;
+    }
+
+    attacks &= ~friendly;
+    move_list.add_moves(make_square(from_idx), attacks, piece_type, bitboards, castling_rights, en_passant_square, halfmove_clock);
+    queens &= queens - 1;
+  }
 }
 void Board::generate_king_moves()
 {
@@ -166,7 +307,8 @@ void Board::generate_king_moves()
   while (moves)
   {
     const auto move_idx = std::countr_zero(moves);
-    move_list.add(from, 1ULL << move_idx, piece_type, MoveType::normal);
+    move_list.add(make_square(from), make_square(move_idx), piece_type, MoveType::normal,
+                  bitboards.piece_at(make_square(move_idx)), castling_rights, en_passant_square, halfmove_clock);
     moves &= moves - 1;
   }
 }
@@ -250,6 +392,63 @@ constexpr void Board::init_king_attacks()
   }
 }
 
+constexpr void Board::init_ray_attacks()
+{
+  for (int s = 0; s < 64; ++s)
+  {
+    int rank = s / 8;
+    int file = s % 8;
+
+    // 0 - North (+8)
+    u64 ray = 0;
+    for (int r = rank + 1; r < 8; ++r)
+      ray |= 1ULL << (r * 8 + file);
+    ray_attacks[0][s] = ray;
+
+    // 1 - North East (+9)
+    ray = 0;
+    for (int r = rank + 1, f = file + 1; r < 8 && f < 8; ++r, ++f)
+      ray |= 1ULL << (r * 8 + f);
+    ray_attacks[1][s] = ray;
+
+    // 2 - East (+1)
+    ray = 0;
+    for (int f = file + 1; f < 8; ++f)
+      ray |= 1ULL << (rank * 8 + f);
+    ray_attacks[2][s] = ray;
+
+    // 3 - South East (-7)
+    ray = 0;
+    for (int r = rank - 1, f = file + 1; r >= 0 && f < 8; --r, ++f)
+      ray |= 1ULL << (r * 8 + f);
+    ray_attacks[3][s] = ray;
+
+    // 4 - South (-8)
+    ray = 0;
+    for (int r = rank - 1; r >= 0; --r)
+      ray |= 1ULL << (r * 8 + file);
+    ray_attacks[4][s] = ray;
+
+    // 5 - South West (-9)
+    ray = 0;
+    for (int r = rank - 1, f = file - 1; r >= 0 && f >= 0; --r, --f)
+      ray |= 1ULL << (r * 8 + f);
+    ray_attacks[5][s] = ray;
+
+    // 6 - West (-1)
+    ray = 0;
+    for (int f = file - 1; f >= 0; --f)
+      ray |= 1ULL << (rank * 8 + f);
+    ray_attacks[6][s] = ray;
+
+    // 7 - North West (+7)
+    ray = 0;
+    for (int r = rank + 1, f = file - 1; r < 8 && f >= 0; ++r, --f)
+      ray |= 1ULL << (r * 8 + f);
+    ray_attacks[7][s] = ray;
+  }
+}
+
 bool is_number(char c) { return std::isdigit(static_cast<unsigned char>(c)); }
 
 void Board::read_fen(const std::string &fen)
@@ -329,12 +528,16 @@ void Board::read_fen(const std::string &fen)
 
   if (fields[2] != "-")
   {
-    for (const char c: fields[2])
+    for (const char& c: fields[2])
     {
-      if (c == 'K') castling_rights |= castle_white_kingside;
-      else if (c == 'Q') castling_rights |= castle_white_queenside;
-      else if (c == 'k') castling_rights |= castle_black_kingside;
-      else if (c == 'q') castling_rights |= castle_black_queenside;
+      if (c == 'K')
+        castling_rights |= castle_white_kingside;
+      else if (c == 'Q')
+        castling_rights |= castle_white_queenside;
+      else if (c == 'k')
+        castling_rights |= castle_black_kingside;
+      else if (c == 'q')
+        castling_rights |= castle_black_queenside;
     }
   }
 
