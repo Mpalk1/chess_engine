@@ -150,7 +150,7 @@ inline int file(Square s) { return static_cast<u8>(s) & 7; } // 0-7
 inline Square make_square(const int file, const int rank) { return static_cast<Square>(rank * 8 + file); }
 inline Square make_square(int sq)
 {
-  if (sq == 0)
+  if (sq < 0 || sq >= 64)
     return Square::none;
   return static_cast<Square>(sq);
 }

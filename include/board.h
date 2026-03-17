@@ -33,11 +33,12 @@ struct Board
   void clear();
   void read_fen(const std::string &fen);
   void make_move(Square from, Square to);
+  void make_move(Move& move);
   void make_move(const Move &move);
   void unmake_move(Square from, Square to);
   void unmake_move(Move& move);
-  MoveList get_legal_moves();
-  const MoveList& get_pseudo_legal_moves();
+  MoveList& get_legal_moves();
+  MoveList& get_pseudo_legal_moves();
   u64 get_squares(Color color) const;
   void print() const;
   void print_moves() const { move_list.print(); }

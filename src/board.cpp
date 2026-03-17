@@ -64,16 +64,243 @@ void Board::make_move(Square from, Square to)
   current_turn = (current_turn == Color::white) ? Color::black : Color::white;
 }
 
-void Board::unmake_move(Move &move) {}
+void Board::unmake_move(Move &move)
+{
+  if (move.piece == PieceType::none)
+    return;
+
+  const u64 from_bb = 1ULL << static_cast<int>(move.from);
+  const u64 to_bb   = 1ULL << static_cast<int>(move.to);
+
+  // Restore side-to-move and counters first (all piece restoration logic depends on mover color)
+  current_turn      = move.prev_turn;
+  castling_rights   = move.prev_castling_rights;
+  en_passant_square = move.prev_enpassant_sq;
+  halfmove_clock    = move.prev_halfmove_clock;
+  fullmove_number   = move.prev_fullmove_number;
+
+  if (move.type == MoveType::kingside_castle)
+  {
+    bitboards[move.piece] &= ~to_bb;
+    bitboards[move.piece] |= from_bb;
+
+    if (current_turn == Color::white)
+    {
+      bitboards[PieceType::white_rook] &= ~(1ULL << static_cast<int>(Square::F1));
+      bitboards[PieceType::white_rook] |=  (1ULL << static_cast<int>(Square::H1));
+    }
+    else
+    {
+      bitboards[PieceType::black_rook] &= ~(1ULL << static_cast<int>(Square::F8));
+      bitboards[PieceType::black_rook] |=  (1ULL << static_cast<int>(Square::H8));
+    }
+  }
+  else if (move.type == MoveType::queenside_castle)
+  {
+    bitboards[move.piece] &= ~to_bb;
+    bitboards[move.piece] |= from_bb;
+
+    if (current_turn == Color::white)
+    {
+      bitboards[PieceType::white_rook] &= ~(1ULL << static_cast<int>(Square::D1));
+      bitboards[PieceType::white_rook] |=  (1ULL << static_cast<int>(Square::A1));
+    }
+    else
+    {
+      bitboards[PieceType::black_rook] &= ~(1ULL << static_cast<int>(Square::D8));
+      bitboards[PieceType::black_rook] |=  (1ULL << static_cast<int>(Square::A8));
+    }
+  }
+  else if (move.type == MoveType::en_passant)
+  {
+    bitboards[move.piece] &= ~to_bb;
+    bitboards[move.piece] |= from_bb;
+
+    const int captured_sq = (current_turn == Color::white)
+                                ? static_cast<int>(move.to) - 8
+                                : static_cast<int>(move.to) + 8;
+    bitboards[move.captured] |= (1ULL << captured_sq);
+  }
+  else if (move.is_promotion())
+  {
+    const bool is_white = (current_turn == Color::white);
+    PieceType promo_piece;
+    switch (move.type)
+    {
+      case MoveType::promotion_queen:
+      case MoveType::promotion_queen_capture:
+        promo_piece = is_white ? PieceType::white_queen : PieceType::black_queen;
+        break;
+      case MoveType::promotion_rook:
+      case MoveType::promotion_rook_capture:
+        promo_piece = is_white ? PieceType::white_rook : PieceType::black_rook;
+        break;
+      case MoveType::promotion_bishop:
+      case MoveType::promotion_bishop_capture:
+        promo_piece = is_white ? PieceType::white_bishop : PieceType::black_bishop;
+        break;
+      default:
+        promo_piece = is_white ? PieceType::white_knight : PieceType::black_knight;
+        break;
+    }
+
+    bitboards[promo_piece] &= ~to_bb;
+    bitboards[move.piece] |= from_bb;
+
+    if (move.captured != PieceType::none)
+      bitboards[move.captured] |= to_bb;
+  }
+  else
+  {
+    bitboards[move.piece] &= ~to_bb;
+    bitboards[move.piece] |= from_bb;
+
+    if (move.captured != PieceType::none)
+      bitboards[move.captured] |= to_bb;
+  }
+}
 
 void Board::unmake_move(Square from, Square to)
 {
-  
+  if (previous_move.from == from && previous_move.to == to)
+  {
+    unmake_move(previous_move);
+    previous_move = Move{};
+  }
 }
 
-MoveList Board::get_legal_moves() { return MoveList{}; }
+MoveList& Board::get_legal_moves()
+{
+  auto &moves = get_pseudo_legal_moves();
+  const size_t original_count = moves.count;
 
-const MoveList& Board::get_pseudo_legal_moves()
+  auto is_square_attacked_by = [this](Square sq, Color attacker) -> bool
+  {
+    if (sq == Square::none || attacker == Color::none)
+      return false;
+
+    const int s = static_cast<int>(sq);
+    const int s_file = s % 8;
+    const int s_rank = s / 8;
+
+    auto in_bounds = [](int file, int rank) -> bool
+    {
+      return file >= 0 && file < 8 && rank >= 0 && rank < 8;
+    };
+
+    auto piece_at = [this](int file, int rank) -> PieceType
+    {
+      return bitboards.piece_at(make_square(file, rank));
+    };
+
+    // Pawn attacks
+    if (attacker == Color::white)
+    {
+      if (in_bounds(s_file - 1, s_rank - 1) && piece_at(s_file - 1, s_rank - 1) == PieceType::white_pawn)
+        return true;
+      if (in_bounds(s_file + 1, s_rank - 1) && piece_at(s_file + 1, s_rank - 1) == PieceType::white_pawn)
+        return true;
+    }
+    else
+    {
+      if (in_bounds(s_file - 1, s_rank + 1) && piece_at(s_file - 1, s_rank + 1) == PieceType::black_pawn)
+        return true;
+      if (in_bounds(s_file + 1, s_rank + 1) && piece_at(s_file + 1, s_rank + 1) == PieceType::black_pawn)
+        return true;
+    }
+
+    // Knight attacks
+    const PieceType enemy_knight = (attacker == Color::white) ? PieceType::white_knight : PieceType::black_knight;
+    if (knight_attacks[s] & bitboards[enemy_knight].get())
+      return true;
+
+    // King attacks
+    const PieceType enemy_king = (attacker == Color::white) ? PieceType::white_king : PieceType::black_king;
+    if (king_attacks[s] & bitboards[enemy_king].get())
+      return true;
+
+    auto is_enemy_slider = [attacker](PieceType p, bool diagonal) -> bool
+    {
+      if (attacker == Color::white)
+      {
+        return diagonal ? (p == PieceType::white_bishop || p == PieceType::white_queen)
+                        : (p == PieceType::white_rook || p == PieceType::white_queen);
+      }
+      return diagonal ? (p == PieceType::black_bishop || p == PieceType::black_queen)
+                      : (p == PieceType::black_rook || p == PieceType::black_queen);
+    };
+
+    auto ray_attacked = [&](int df, int dr, bool diagonal) -> bool
+    {
+      int f = s_file + df;
+      int r = s_rank + dr;
+      while (in_bounds(f, r))
+      {
+        const PieceType p = piece_at(f, r);
+        if (p != PieceType::none)
+          return is_enemy_slider(p, diagonal);
+        f += df;
+        r += dr;
+      }
+      return false;
+    };
+
+    // Rook/queen lines
+    if (ray_attacked(0, 1, false) || ray_attacked(0, -1, false) || ray_attacked(1, 0, false) ||
+        ray_attacked(-1, 0, false))
+      return true;
+
+    // Bishop/queen lines
+    if (ray_attacked(1, 1, true) || ray_attacked(1, -1, true) || ray_attacked(-1, 1, true) ||
+        ray_attacked(-1, -1, true))
+      return true;
+
+    return false;
+  };
+
+  size_t write_idx = 0;
+  for (size_t i = 0; i < original_count; ++i)
+  {
+    Move candidate = moves[i];
+
+    const Color side_to_move = current_turn;
+    const Color enemy_side = (side_to_move == Color::white) ? Color::black : Color::white;
+    const PieceType enemy_king = (enemy_side == Color::white) ? PieceType::white_king : PieceType::black_king;
+
+    // Capturing the king is never a legal chess move.
+    if (candidate.captured == enemy_king)
+      continue;
+
+    // Castling cannot be played out of, through, or into check.
+    if (candidate.is_castle())
+    {
+      const Square through = (candidate.type == MoveType::kingside_castle)
+                                 ? ((side_to_move == Color::white) ? Square::F1 : Square::F8)
+                                 : ((side_to_move == Color::white) ? Square::D1 : Square::D8);
+
+      if (is_square_attacked_by(candidate.from, enemy_side) || is_square_attacked_by(through, enemy_side))
+        continue;
+    }
+
+    make_move(candidate);
+
+    const Color side_just_moved = (current_turn == Color::white) ? Color::black : Color::white;
+    const PieceType king_piece = (side_just_moved == Color::white) ? PieceType::white_king : PieceType::black_king;
+    const Square king_square = make_square(bitboards[king_piece].get());
+
+    const bool in_check = (king_square == Square::none) || is_square_attacked_by(king_square, current_turn);
+
+    unmake_move(candidate);
+
+    if (!in_check)
+      moves[write_idx++] = candidate;
+  }
+
+  moves.count = write_idx;
+  return moves;
+}
+
+MoveList& Board::get_pseudo_legal_moves()
 {
   move_list.clear();
   generate_pawn_moves();
@@ -104,6 +331,13 @@ void Board::generate_pawn_moves()
   {
     const auto from = std::countr_zero(pawns);
     const Bitboard from_bb{1ULL << from};
+
+    const Bitboard left_attacks = (current_turn == Color::white)
+        ? ((from_bb & ~FILE_A).shift(cap_left, 1))
+        : ((from_bb & ~FILE_H).shift(cap_left, 1));
+    const Bitboard right_attacks = (current_turn == Color::white)
+        ? ((from_bb & ~FILE_H).shift(cap_right, 1))
+        : ((from_bb & ~FILE_A).shift(cap_right, 1));
 
     // --- single push ---
     Bitboard single_push_bb = from_bb.shift(dir, 1) & empty_squares;
@@ -146,7 +380,7 @@ void Board::generate_pawn_moves()
     }
 
     // --- captures ---
-    const Bitboard attacks = (from_bb.shift(cap_left, 1) | from_bb.shift(cap_right, 1)) & enemy_pieces;
+    const Bitboard attacks = (left_attacks | right_attacks) & enemy_pieces;
     u64 a = attacks.get();
     while (a)
     {
@@ -183,7 +417,7 @@ void Board::generate_pawn_moves()
     if (en_passant_square != Square::none)
     {
       const u64 ep_bb = 1ULL << static_cast<int>(en_passant_square);
-      const u64 ep_attacks = (from_bb.shift(cap_left, 1) | from_bb.shift(cap_right, 1)).get() & ep_bb;
+      const u64 ep_attacks = (left_attacks | right_attacks).get() & ep_bb;
       u64 ep = ep_attacks;
       while (ep)
       {
@@ -541,7 +775,7 @@ constexpr void Board::init_ray_attacks()
 
     // 2 - East (+1)
     ray = 0;
-    for (int f = file + 1; f < 8; ++f)
+    for (int f = file + 1; f < 8; f++)
       ray |= 1ULL << (rank * 8 + f);
     ray_attacks[2][s] = ray;
 
@@ -679,8 +913,26 @@ void Board::read_fen(const std::string &fen)
     fullmove_number = std::stoi(std::string(fields[5]));
 }
 
+void Board::make_move(Move &move)
+{
+  move.prev_castling_rights = castling_rights;
+  move.prev_enpassant_sq = en_passant_square;
+  move.prev_halfmove_clock = halfmove_clock;
+  move.prev_fullmove_number = fullmove_number;
+  move.prev_turn = current_turn;
+
+  make_move(static_cast<const Move &>(move));
+}
+
 void Board::make_move(const Move &move)
 {
+  previous_move = move;
+  previous_move.prev_castling_rights = castling_rights;
+  previous_move.prev_enpassant_sq = en_passant_square;
+  previous_move.prev_halfmove_clock = halfmove_clock;
+  previous_move.prev_fullmove_number = fullmove_number;
+  previous_move.prev_turn = current_turn;
+
   const u64 from_bb = 1ULL << static_cast<int>(move.from);
   const u64 to_bb   = 1ULL << static_cast<int>(move.to);
 
