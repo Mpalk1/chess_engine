@@ -2,6 +2,8 @@
 #include "types.h"
 #include "uci.h"
 
+#include "tracy/Tracy.hpp"
+
 // Parse "e2e4" into from/to squares. Returns false if the input is invalid.
 static bool parse_move(const std::string& input, Square& from, Square& to)
 {

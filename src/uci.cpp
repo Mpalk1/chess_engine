@@ -1,5 +1,6 @@
 #include "uci.h"
 #include <sstream>
+#include "tracy/Tracy.hpp"
 
 void Uci::run()
 {
@@ -49,8 +50,8 @@ void Uci::run()
 	}
 }
 
-u64 Uci::perft(Board& b, int depth)
-{
+u64 Uci::perft(Board &b, int depth) {
+	ZoneScoped;
 	if (depth == 0)
 		return 1;
 

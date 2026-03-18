@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string_view>
 #include <unordered_map>
+#include "tracy/Tracy.hpp"
 
 Board::Board() {
   init_knight_attacks();
@@ -16,6 +17,7 @@ Board::Board() {
 }
 
 void Board::clear() {
+  ZoneScoped;
   bitboards.clear();
   move_list.clear();
   current_turn = Color::white;
@@ -55,6 +57,7 @@ void Board::make_move(Square from, Square to) {
 }
 
 void Board::unmake_move(Move &move) {
+  ZoneScoped;
   if (move.piece == PieceType::none)
     return;
 
@@ -150,6 +153,7 @@ void Board::unmake_move(Square from, Square to) {
 }
 
 MoveList &Board::get_legal_moves() {
+  ZoneScoped;
   auto &moves = get_pseudo_legal_moves();
   const size_t original_count = moves.count;
 
@@ -281,6 +285,7 @@ MoveList &Board::get_legal_moves() {
 }
 
 MoveList &Board::get_pseudo_legal_moves() {
+  ZoneScoped;
   move_list.clear();
   generate_pawn_moves();
   generate_knight_moves();
@@ -292,6 +297,7 @@ MoveList &Board::get_pseudo_legal_moves() {
 }
 
 void Board::generate_pawn_moves() {
+  ZoneScoped;
   const auto empty_squares = get_empty_squares();
   const auto enemy_pieces = (current_turn == Color::white)
                                 ? get_squares(Color::black)
@@ -417,6 +423,7 @@ void Board::generate_pawn_moves() {
   }
 }
 void Board::generate_knight_moves() {
+  ZoneScoped;
   const auto friendly_squares =
       get_squares(current_turn == Color::white ? Color::white : Color::black);
   auto knights =
@@ -439,6 +446,7 @@ void Board::generate_knight_moves() {
   }
 }
 void Board::generate_bishop_moves() {
+  ZoneScoped;
   const auto piece_type = current_turn == Color::white
                               ? PieceType::white_bishop
                               : PieceType::black_bishop;
@@ -480,6 +488,7 @@ void Board::generate_bishop_moves() {
   }
 }
 void Board::generate_rook_moves() {
+  ZoneScoped;
   const auto piece_type = current_turn == Color::white ? PieceType::white_rook
                                                        : PieceType::black_rook;
   auto rooks = bitboards[piece_type].get();
@@ -533,6 +542,7 @@ void Board::generate_rook_moves() {
   }
 }
 void Board::generate_queen_moves() {
+  ZoneScoped;
   const auto piece_type = current_turn == Color::white ? PieceType::white_queen
                                                        : PieceType::black_queen;
   auto queens = bitboards[piece_type].get();
@@ -572,6 +582,7 @@ void Board::generate_queen_moves() {
   }
 }
 void Board::generate_king_moves() {
+  ZoneScoped;
   const auto friendly_squares =
       get_squares(current_turn == Color::white ? Color::white : Color::black);
   const auto piece_type = current_turn == Color::white ? PieceType::white_king
@@ -854,6 +865,7 @@ void Board::read_fen(const std::string &fen) {
 }
 
 void Board::make_move(Move &move) {
+  ZoneScoped;
   move.prev_castling_rights = castling_rights;
   move.prev_enpassant_sq = en_passant_square;
   move.prev_halfmove_clock = halfmove_clock;
@@ -864,6 +876,7 @@ void Board::make_move(Move &move) {
 }
 
 void Board::make_move(const Move &move) {
+  ZoneScoped;
   previous_move = move;
   previous_move.prev_castling_rights = castling_rights;
   previous_move.prev_enpassant_sq = en_passant_square;

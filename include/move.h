@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <iostream>
 #include "types.h"
+#include "tracy/Tracy.hpp"
 
 struct Move
 {
@@ -22,12 +23,16 @@ struct Move
 	int prev_fullmove_number;
 	Color prev_turn;
 
-	Move() :
-		from(Square::A1), to(Square::A1), piece(PieceType::none), captured(PieceType::none), type(MoveType::normal),
-		flags(MoveFlag::none), castling_rights(0), enpassant_sq(Square::none), halfmove_clock(0),
-		prev_castling_rights(0), prev_enpassant_sq(Square::none), prev_halfmove_clock(0), prev_fullmove_number(1),
-		prev_turn(Color::white)
-	{}
+        Move()
+            : from(Square::A1), to(Square::A1), piece(PieceType::none),
+              captured(PieceType::none), type(MoveType::normal),
+              flags(MoveFlag::none), castling_rights(0),
+              enpassant_sq(Square::none), halfmove_clock(0),
+              prev_castling_rights(0), prev_enpassant_sq(Square::none),
+              prev_halfmove_clock(0), prev_fullmove_number(1),
+              prev_turn(Color::white) {
+          ZoneScoped;
+	}
 
 	Move(Square from, Square to, PieceType piece, MoveType type = MoveType::normal) :
 		from(from), to(to), piece(piece), captured(PieceType::none), type(type), flags(MoveFlag::none),
