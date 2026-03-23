@@ -1,70 +1,56 @@
 # chess_engine
 
-A small bitboard-based chess engine written in modern C++ (`C++20`), currently focused on **move generation correctness** and **perft-style validation** through a minimal UCI interface.
+A chess engine written in C++20. Currently a work in progress — the focus right now is on getting move generation **completely correct** before anything else.
 
-> Status: **work in progress**
+## What's working
 
-## What is currently in the project
+- Loads any position via FEN
+- Generates all legal moves for any position (pawns, knights, bishops, rooks, queens, king — including castling, en passant, and promotions)
+- Makes and unmakes moves without corrupting state
+- Validates correctness via **perft** — counting leaf nodes at a given depth and comparing against known values
+- Minimal UCI interface (`uci`, `isready`, `position`, `go perft <depth>`)
 
-### Core architecture
-- Bitboard-based board representation (`12` piece bitboards: white/black × 6 piece types).
-- Board state tracking:
-  - side to move
-  - castling rights
-  - en passant square
-  - halfmove/fullmove counters
+## What's next
 
-### Position setup
-- FEN parsing via `Board::read_fen(...)`.
-- Built-in starting position FEN.
+- Search (minimax / alpha-beta)
+- Evaluation
+- Full UCI compliance so it can be plugged into a GUI
 
-### Move system
-- `Move` + `MoveList` types with support for:
-  - normal moves
-  - captures
-  - double pawn push
-  - en passant
-  - castling (king/queen side)
-  - all promotion variants (with and without capture)
+## Status
 
-### Move generation
-- Pseudo-legal generation for:
-  - pawns
-  - knights
-  - bishops
-  - rooks
-  - queens
-  - king
-- Legal move filtering (removes moves that leave own king in check).
-- Precomputed attack tables:
-  - knight attacks
-  - king attacks
-  - directional ray attacks for sliders
-
-### Move execution
-- `make_move(...)` / `unmake_move(...)` for all supported move types, including special moves.
-- Used by recursive `perft` for correctness testing.
-
-### UCI (currently minimal)
-Implemented commands:
-- `uci`
-- `isready`
-- `position startpos`
-- `go perft <depth>`
-
-Current focus is validation/debugging rather than playing strength.
-
-### Profiling
-- Integrated with Tracy (`third_party/tracy`) and instrumented with `ZoneScoped` in hot paths.
+Move generation appears correct. Perft results match expected values at standard depths. The engine can't play yet — that's next.
 
 ---
 
 ## Build
 
-## Requirements
-- CMake `>= 3.28`
-- C++20 compiler (MSVC is fine)
-- Ninja
-- Git (for submodules)
+**Requirements:** CMake ≥ 3.28 · C++20 compiler · Ninja · Git
 
-## 1) Clone (with submodules)
+### 1) Clone with submodules
+```bash
+git clone --recurse-submodules https://github.com/your-username/chess_engine.git
+cd chess_engine
+```
+
+### 2) Configure
+```bash
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+```
+
+### 3) Build
+```bash
+cmake --build build
+```
+
+### 4) Run
+```bash
+./build/chess_engine
+```
+
+The engine speaks UCI, so you can type commands directly or connect it to any UCI-compatible GUI (Arena, Cute Chess, etc.) - wip.
+```
+uci
+isready
+position startpos
+go perft 5
+```
