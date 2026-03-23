@@ -28,13 +28,13 @@ Move generation appears correct. Perft results match expected values at standard
 
 ### 1) Clone with submodules
 ```bash
-git clone --recurse-submodules https://github.com/your-username/chess_engine.git
+git clone --recurse-submodules https://github.com/Mpalk1/chess_engine.git
 cd chess_engine
 ```
 
 ### 2) Configure
 ```bash
-cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_SCAN_FOR_MODULES=OFF
 ```
 
 ### 3) Build
