@@ -26,8 +26,32 @@ void Uci::run()
 			iss >> token;
 			if (token == "startpos")
 			{
-				board.read_fen(board.starting_fen);
+				position.read_fen(position.starting_fen);
 				position_init = true;
+			}
+			else if (token == "fen")
+			{
+				std::string fen{};
+				std::string fen_field{};
+				int fields_read = 0;
+
+				// UCI `position fen` expects exactly 6 space-separated FEN fields.
+				for (; fields_read < 6 && (iss >> fen_field); ++fields_read)
+				{
+					if (!fen.empty())
+						fen += " ";
+					fen += fen_field;
+				}
+
+				if (fields_read == 6)
+				{
+					position.read_fen(fen);
+					position_init = true;
+				}
+				else
+				{
+					position_init = false;
+				}
 			}
 		}
 		else if (token == "go" && position_init)
@@ -39,18 +63,28 @@ void Uci::run()
 				if (is_number(token.c_str()[0]))
 				{
 					auto depth = std::stoi(token);
+					size_t nodes = 0;
 					for (int i{ 1 }; i <= depth; ++i)
-						std::cout << "perft [" << i << "]: " << Uci::perft(board, i) << "\n";
+					{
+						auto temp = perft(position, i);
+						std::cout << "perft [" << i << "]: " << temp << "\n";
+						if (i == depth)
+						{
+							nodes += temp;
+							std::cout << "Nodes searched: " << nodes << std::endl;
+						}
+					}
+
 				}
 				
 
 			}
 		}
-		
+		std::cout << std::flush;
 	}
 }
 
-u64 Uci::perft(Board &b, int depth) {
+u64 Uci::perft(Position &b, int depth) {
 	ZoneScoped;
 	if (depth == 0)
 		return 1;

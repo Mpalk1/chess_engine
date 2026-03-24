@@ -6,7 +6,6 @@ set(CMAKE_CXX_STANDARD 20)
 option(TRACY_ENABLE "" ON)
 add_subdirectory(third_party/tracy)
 
-include_directories(include)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
