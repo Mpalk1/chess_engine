@@ -26,6 +26,7 @@ struct Position
 	void make_move(Square from, Square to);
 	void make_move(Move& move);
 	void make_move(const Move& move);
+	void make_move(const std::string& token);
 	void unmake_move(Square from, Square to);
 	void unmake_move(Move& move);
 	MoveList& get_legal_moves();

@@ -3,7 +3,7 @@ import csv
 import chess
 
 # --- CONFIGURATION ---
-PATH_TO_BINARY = '../build/chess_engine.exe'
+PATH_TO_BINARY = '../build/chess_engine'
 CSV_PATH = 'fen_testing_data.csv'
 MAX_DEPTH = 4
 CSV_LIMIT = 10000

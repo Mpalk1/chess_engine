@@ -19,7 +19,7 @@ struct Bitboard
 
   Bitboard() = default;
   explicit Bitboard(u64 b) : bitboard(b) {}
-  u64 get() const;
+  constexpr u64 get() const { return bitboard; };
   Bitboard shift(Direction dir, int times) const;
   void shift_inplace(Direction dir, int times);
   void print_as_bits() const;

@@ -8,16 +8,11 @@
 #include <iostream>
 #include <string_view>
 #include <unordered_map>
-#include "tracy/Tracy.hpp"
 
-Position::Position()
-{
-	ZoneScoped;
-}
+Position::Position() = default;
 
 void Position::clear()
 {
-	ZoneScoped;
 	bitboards.clear();
 	move_list.clear();
 	current_turn = Color::white;
@@ -30,7 +25,6 @@ void Position::clear()
 
 void Position::make_move(Square from, Square to)
 {
-	ZoneScoped;
 	const u64 from_bb = 1ULL << static_cast<int>(from);
 	const u64 to_bb = 1ULL << static_cast<int>(to);
 
@@ -64,7 +58,6 @@ void Position::make_move(Square from, Square to)
 
 void Position::unmake_move(Move& move)
 {
-	ZoneScoped;
 	if (move.piece == PieceType::none)
 		return;
 
@@ -170,7 +163,6 @@ void Position::unmake_move(Move& move)
 
 void Position::unmake_move(Square from, Square to)
 {
-	ZoneScoped;
 	if (previous_move.from == from && previous_move.to == to)
 	{
 		unmake_move(previous_move);
@@ -180,13 +172,11 @@ void Position::unmake_move(Square from, Square to)
 
 MoveList& Position::get_legal_moves()
 {
-	ZoneScoped;
 	return Generator::get_moves(*this, move_list);
 }
 
 MoveList& Position::get_pseudo_legal_moves()
 {
-	ZoneScoped;
 	return Generator::get_moves(*this, move_list);
 }
 
@@ -223,7 +213,6 @@ bool is_number(char c) { return std::isdigit(static_cast<unsigned char>(c)); }
 
 void Position::read_fen(const std::string& fen)
 {
-	ZoneScoped;
 	assert(!fen.empty());
 	clear();
 
@@ -328,7 +317,6 @@ void Position::read_fen(const std::string& fen)
 
 void Position::make_move(Move& move)
 {
-	ZoneScoped;
 	move.prev_castling_rights = castling_rights;
 	move.prev_enpassant_sq = en_passant_square;
 	move.prev_halfmove_clock = halfmove_clock;
@@ -340,7 +328,6 @@ void Position::make_move(Move& move)
 
 void Position::make_move(const Move& move)
 {
-	ZoneScoped;
 	previous_move = move;
 	previous_move.prev_castling_rights = castling_rights;
 	previous_move.prev_enpassant_sq = en_passant_square;
@@ -439,4 +426,69 @@ void Position::make_move(const Move& move)
 	if (current_turn == Color::black)
 		fullmove_number++;
 	current_turn = (current_turn == Color::white) ? Color::black : Color::white;
+}
+
+void Position::make_move(const std::string &token)
+{
+	if (token.size() != 4 && token.size() != 5)
+		return;
+
+	auto parse_square = [](char file_char, char rank_char) -> Square
+		{
+			file_char = static_cast<char>(std::tolower(static_cast<unsigned char>(file_char)));
+			if (file_char < 'a' || file_char > 'h' || rank_char < '1' || rank_char > '8')
+				return Square::none;
+			return make_square(file_char - 'a', rank_char - '1');
+		};
+
+	const Square from = parse_square(token[0], token[1]);
+	const Square to = parse_square(token[2], token[3]);
+	if (from == Square::none || to == Square::none)
+		return;
+
+	char promotion_piece = '\0';
+	if (token.size() == 5)
+	{
+		promotion_piece = static_cast<char>(std::tolower(static_cast<unsigned char>(token[4])));
+		if (promotion_piece != 'q' && promotion_piece != 'r' && promotion_piece != 'b' && promotion_piece != 'n')
+			return;
+	}
+
+	auto promotion_matches = [](MoveType type, char promo) -> bool
+		{
+			switch (promo)
+			{
+			case 'q':
+				return type == MoveType::promotion_queen || type == MoveType::promotion_queen_capture;
+			case 'r':
+				return type == MoveType::promotion_rook || type == MoveType::promotion_rook_capture;
+			case 'b':
+				return type == MoveType::promotion_bishop || type == MoveType::promotion_bishop_capture;
+			case 'n':
+				return type == MoveType::promotion_knight || type == MoveType::promotion_knight_capture;
+			default:
+				return false;
+			}
+		};
+
+	MoveList& legal_moves = get_legal_moves();
+	for (int i = 0; i < static_cast<int>(legal_moves.count); ++i)
+	{
+		const Move& move = legal_moves[i];
+		if (move.from != from || move.to != to)
+			continue;
+
+		if (token.size() == 5)
+		{
+			if (!move.is_promotion() || !promotion_matches(move.type, promotion_piece))
+				continue;
+		}
+		else if (move.is_promotion())
+		{
+			continue;
+		}
+
+		make_move(move);
+		return;
+	}
 }

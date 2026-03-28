@@ -1,12 +1,7 @@
-﻿#include <string>
-#include "types.h"
-#include "uci.h"
-
-#include "tracy/Tracy.hpp"
+﻿#include "uci.h"
 
 int main()
 {
-	ZoneScoped;
 	Uci uci{};
 	uci.run();
 }

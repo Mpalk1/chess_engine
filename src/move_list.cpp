@@ -1,13 +1,11 @@
 #include "move_list.h"
 #include <bit>
 #include "types.h"
-#include "tracy/Tracy.hpp"
 
 
 void MoveList::add_moves(Square from, u64 targets, PieceType piece, const BoardList& board, u8 castling_rights,
 	Square en_passant_sq, u8 halfmove_clock)
 {
-	ZoneScoped;
 	while (targets)
 	{
 		const int to_idx = std::countr_zero(targets);
@@ -31,6 +29,5 @@ void MoveList::add_moves(Square from, u64 targets, PieceType piece, const BoardL
 void MoveList::add(Square from, Square to, PieceType piece, MoveType type, PieceType captured, u8 castling_rights,
 	Square en_passant_sq, u8 halfmove_clock)
 {
-	ZoneScoped;
 	add_move(Move{ from, to, piece, type, captured, castling_rights, en_passant_sq, halfmove_clock });
 }

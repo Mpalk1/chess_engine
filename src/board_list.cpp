@@ -1,5 +1,4 @@
 ﻿#include "board_list.h"
-#include "tracy/Tracy.hpp"
 
 Bitboard& BoardList::operator[](PieceType piece)
 {
@@ -18,7 +17,6 @@ const Bitboard& BoardList::operator[](int idx) const
 
 void BoardList::clear()
 {
-	ZoneScoped;
 	for (auto& bb : bitboards)
 	{
 		bb = Bitboard{ 0ULL };
@@ -27,7 +25,6 @@ void BoardList::clear()
 
 u64 BoardList::occupied() const
 {
-	ZoneScoped;
 	u64 occ = 0ULL;
 	for (const auto& bb : bitboards)
 	{
@@ -38,7 +35,6 @@ u64 BoardList::occupied() const
 
 u64 BoardList::occupied(Color color) const
 {
-	ZoneScoped;
 	if (color == Color::none)
 	{
 		return 0ULL;
@@ -61,7 +57,6 @@ u64 BoardList::empty() const
 
 PieceType BoardList::piece_at(Square s) const
 {
-	ZoneScoped;
 	if (s == Square::none)
 		return PieceType::none;
 	const u64 mask = 1ULL << static_cast<u8>(s);

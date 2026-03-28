@@ -161,6 +161,8 @@ inline Square make_square(u64 bb)
 	return static_cast<Square>(std::countr_zero(bb));
 }
 
+
+
 inline std::string square_to_string(Square s)
 {
 	if (s == Square::none)

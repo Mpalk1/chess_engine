@@ -1,6 +1,7 @@
-#include "uci.h"
 #include <sstream>
-#include "tracy/Tracy.hpp"
+#include <cstdlib>
+#include "uci.h"
+#include "engine.h"
 
 void Uci::run()
 {
@@ -28,14 +29,20 @@ void Uci::run()
 			{
 				position.read_fen(position.starting_fen);
 				position_init = true;
+				iss >> token;
+				if (token == "moves")
+				{
+					while (iss >> token)
+					{
+						position.make_move(token);
+					}
+				}
 			}
 			else if (token == "fen")
 			{
 				std::string fen{};
 				std::string fen_field{};
 				int fields_read = 0;
-
-				// UCI `position fen` expects exactly 6 space-separated FEN fields.
 				for (; fields_read < 6 && (iss >> fen_field); ++fields_read)
 				{
 					if (!fen.empty())
@@ -47,6 +54,14 @@ void Uci::run()
 				{
 					position.read_fen(fen);
 					position_init = true;
+					iss >> token;
+					if (token == "moves")
+					{
+						while (iss >> token)
+						{
+							position.make_move(token);
+						}
+					}
 				}
 				else
 				{
@@ -56,8 +71,12 @@ void Uci::run()
 		}
 		else if (token == "go" && position_init)
 		{
-			iss >> token;
-			if (token == "perft")
+			if (!(iss >> token))
+			{
+				auto move = Engine::best_move(position, 4);
+				std::cout << "bestmove " << square_to_string(move.from) << square_to_string(move.to) << std::endl;
+			}
+			else if (token == "perft")
 			{
 				iss >> token;
 				if (is_number(token.c_str()[0]))
@@ -74,18 +93,34 @@ void Uci::run()
 							std::cout << "Nodes searched: " << nodes << std::endl;
 						}
 					}
-
 				}
-				
-
 			}
+			else if (token == "eval")
+			{
+				std::cout << "position evaluated to: " << Engine::evaluate(position) << std::endl;
+			}
+			else if (token == "depth")
+			{
+				iss >> token;
+				auto depth = std::stoi(token);
+				auto move = Engine::best_move(position, depth);
+				std::cout << "bestmove " << square_to_string(move.from) << square_to_string(move.to) << std::endl;
+			}
+		}
+		else if (token == "quit")
+		{
+			std::cout << "quitting...\n";
+			std::exit(0);
+		}
+		else
+		{
+			std::cout << "unknown command : " << token << std::endl;
 		}
 		std::cout << std::flush;
 	}
 }
 
 u64 Uci::perft(Position &b, int depth) {
-	ZoneScoped;
 	if (depth == 0)
 		return 1;
 

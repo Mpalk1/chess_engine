@@ -1,11 +1,9 @@
 ﻿#include "bitboard.h"
 #include <bitset>
 #include <iostream>
-#include "tracy/Tracy.hpp"
 
 void Bitboard::shift_inplace(Direction dir, int times)
 {
-	ZoneScoped;
 	auto d = static_cast<int>(dir);
 	if (d < 0)
 	{
@@ -19,7 +17,6 @@ void Bitboard::shift_inplace(Direction dir, int times)
 
 Bitboard Bitboard::shift(Direction dir, int times) const
 {
-	ZoneScoped;
 	auto d = static_cast<int>(dir);
 	if (d < 0)
 	{
@@ -31,7 +28,6 @@ Bitboard Bitboard::shift(Direction dir, int times) const
 	}
 }
 
-u64 Bitboard::get() const { return bitboard; }
 
 void Bitboard::print_as_bits() const { std::cout << std::bitset<64>(bitboard) << "\n"; }
 

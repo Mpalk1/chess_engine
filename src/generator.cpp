@@ -4,7 +4,6 @@
 
 #include "bitboard.h"
 #include "position.h"
-#include "tracy/Tracy.hpp"
 
 const std::array<u64, 64> Generator::knight_attacks = Generator::init_knight_attacks();
 const std::array<u64, 64> Generator::king_attacks = Generator::init_king_attacks();
@@ -12,7 +11,6 @@ const std::array<std::array<u64, 64>, 8> Generator::ray_attacks = Generator::ini
 
 MoveList& Generator::get_moves(Position& position, MoveList& out_moves)
 {
-	ZoneScoped;
 	out_moves.clear();
 
 	PositionInfo info{};
@@ -179,7 +177,6 @@ void Generator::filter_legal_moves(Position& position, MoveList& moves)
 void Generator::generate_pawn_moves(Position& position, const PositionInfo& info,
 	MoveList& out_moves)
 {
-	ZoneScoped;
 	const u64 empty_squares = info.empty;
 	const u64 enemy_pieces = info.enemy;
 
@@ -320,7 +317,6 @@ void Generator::generate_pawn_moves(Position& position, const PositionInfo& info
 void Generator::generate_knight_moves(Position& position, const PositionInfo& info,
 	MoveList& out_moves)
 {
-	ZoneScoped;
 	auto knights =
 		position.bitboards[info.turn == Color::white ? PieceType::white_knight
 		: PieceType::black_knight]
@@ -345,7 +341,6 @@ void Generator::generate_knight_moves(Position& position, const PositionInfo& in
 void Generator::generate_bishop_moves(Position& position, const PositionInfo& info,
 	MoveList& out_moves)
 {
-	ZoneScoped;
 	const auto piece_type = info.turn == Color::white
 		? PieceType::white_bishop
 		: PieceType::black_bishop;
@@ -395,7 +390,6 @@ void Generator::generate_bishop_moves(Position& position, const PositionInfo& in
 void Generator::generate_rook_moves(Position& position, const PositionInfo& info,
 	MoveList& out_moves)
 {
-	ZoneScoped;
 	const auto piece_type = info.turn == Color::white ? PieceType::white_rook
 		: PieceType::black_rook;
 	auto rooks = position.bitboards[piece_type].get();
@@ -460,7 +454,6 @@ void Generator::generate_rook_moves(Position& position, const PositionInfo& info
 void Generator::generate_queen_moves(Position& position, const PositionInfo& info,
 	MoveList& out_moves)
 {
-	ZoneScoped;
 	const auto piece_type = info.turn == Color::white ? PieceType::white_queen
 		: PieceType::black_queen;
 	auto queens = position.bitboards[piece_type].get();
@@ -508,7 +501,6 @@ void Generator::generate_queen_moves(Position& position, const PositionInfo& inf
 void Generator::generate_king_moves(Position& position, const PositionInfo& info,
 	MoveList& out_moves)
 {
-	ZoneScoped;
 	const auto piece_type = info.turn == Color::white ? PieceType::white_king
 		: PieceType::black_king;
 	auto king = position.bitboards[piece_type].get();

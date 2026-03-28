@@ -1,7 +1,6 @@
 ﻿#pragma once
 #include <iostream>
 #include "types.h"
-#include "tracy/Tracy.hpp"
 
 struct Move
 {
@@ -31,7 +30,6 @@ struct Move
               prev_castling_rights(0), prev_enpassant_sq(Square::none),
               prev_halfmove_clock(0), prev_fullmove_number(1),
               prev_turn(Color::white) {
-          ZoneScoped;
 	}
 
 	Move(Square from, Square to, PieceType piece, MoveType type = MoveType::normal) :
