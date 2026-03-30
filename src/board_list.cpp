@@ -54,7 +54,7 @@ u64 BoardList::empty() const
 {
 	return ~occupied();
 }
-
+// todo: make this use a mailbox approach -> tracking which piece is where when making moves
 PieceType BoardList::piece_at(Square s) const
 {
 	if (s == Square::none)

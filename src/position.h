@@ -17,7 +17,8 @@ struct Position
 	Square en_passant_square{ Square::none };
 	u8 halfmove_clock{ 0 };
 	int fullmove_number{ 1 };
-	Move previous_move{}; // for unmaking a move
+	Move previous_move{};
+	std::array<PieceType, 64> mailbox{};
 
 	u64 get_empty_squares() const { return bitboards.empty(); }
 	Position();
@@ -29,6 +30,7 @@ struct Position
 	void make_move(const std::string& token);
 	void unmake_move(Square from, Square to);
 	void unmake_move(Move& move);
+	PieceType piece_at(Square sq) const;
 	MoveList& get_legal_moves();
 	MoveList& get_pseudo_legal_moves();
 	u64 get_squares(Color color) const;

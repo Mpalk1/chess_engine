@@ -1,16 +1,17 @@
 #include "move_list.h"
 #include <bit>
+#include "position.h"
 #include "types.h"
 
 
-void MoveList::add_moves(Square from, u64 targets, PieceType piece, const BoardList& board, u8 castling_rights,
+void MoveList::add_moves(Square from, u64 targets, PieceType piece, const Position& position, u8 castling_rights,
 	Square en_passant_sq, u8 halfmove_clock)
 {
 	while (targets)
 	{
 		const int to_idx = std::countr_zero(targets);
 		const auto to = make_square(to_idx);
-		const auto captured = board.piece_at(to);
+		const auto captured = position.piece_at(to);
 		const auto type = (captured != PieceType::none) ? MoveType::capture : MoveType::normal;
 
 		// If a rook is captured on its starting square, remove the corresponding castling right

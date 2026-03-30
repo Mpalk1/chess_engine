@@ -48,7 +48,7 @@ bool Generator::is_square_attacked_by(const Position& position, Square sq, Color
 
 	auto piece_at = [&position](int file, int rank) -> PieceType
 		{
-			return position.bitboards.piece_at(make_square(file, rank));
+			return position.piece_at(make_square(file, rank));
 		};
 
 	if (attacker == Color::white)
@@ -262,7 +262,7 @@ void Generator::generate_pawn_moves(Position& position, const PositionInfo& info
 		{
 			const auto to = std::countr_zero(a);
 			const auto to_sq = make_square(to);
-			const auto captured_piece = position.bitboards.piece_at(to_sq);
+			const auto captured_piece = position.piece_at(to_sq);
 
 			u8 new_castling = position.castling_rights;
 			if (to == 7)
@@ -331,7 +331,7 @@ void Generator::generate_knight_moves(Position& position, const PositionInfo& in
 		out_moves.add_moves(from, moves,
 			info.turn == Color::white ? PieceType::white_knight
 			: PieceType::black_knight,
-			position.bitboards, position.castling_rights, Square::none,
+			position, position.castling_rights, Square::none,
 			position.halfmove_clock);
 
 		knights &= knights - 1;
@@ -380,7 +380,7 @@ void Generator::generate_bishop_moves(Position& position, const PositionInfo& in
 		}
 
 		attacks &= ~info.friendly;
-		out_moves.add_moves(make_square(from_idx), attacks, piece_type, position.bitboards,
+		out_moves.add_moves(make_square(from_idx), attacks, piece_type, position,
 			position.castling_rights, Square::none, position.halfmove_clock);
 
 		bishops &= bishops - 1;
@@ -444,7 +444,7 @@ void Generator::generate_rook_moves(Position& position, const PositionInfo& info
 		}
 
 		attacks &= ~info.friendly;
-		out_moves.add_moves(make_square(from_idx), attacks, piece_type, position.bitboards,
+		out_moves.add_moves(make_square(from_idx), attacks, piece_type, position,
 			new_castling, Square::none, position.halfmove_clock);
 
 		rooks &= rooks - 1;
@@ -492,7 +492,7 @@ void Generator::generate_queen_moves(Position& position, const PositionInfo& inf
 		}
 
 		attacks &= ~info.friendly;
-		out_moves.add_moves(make_square(from_idx), attacks, piece_type, position.bitboards,
+		out_moves.add_moves(make_square(from_idx), attacks, piece_type, position,
 			position.castling_rights, Square::none, position.halfmove_clock);
 		queens &= queens - 1;
 	}
@@ -517,7 +517,7 @@ void Generator::generate_king_moves(Position& position, const PositionInfo& info
 	{
 		const auto move_idx = std::countr_zero(moves);
 		const auto to_sq = make_square(move_idx);
-		const auto captured = position.bitboards.piece_at(to_sq);
+		const auto captured = position.piece_at(to_sq);
 		const auto type =
 			(captured != PieceType::none) ? MoveType::capture : MoveType::normal;
 

@@ -18,6 +18,11 @@ void Uci::run()
 			std::cout << "id author Maciej Palkowski\n";
 			std::cout << "uciok\n";
 		}
+		else if (token == "ucinewgame")
+		{
+			engine.reset();
+			position_init = false;
+		}
 		else if (token == "isready")
 		{
 			std::cout << "readyok\n";
@@ -71,40 +76,74 @@ void Uci::run()
 		}
 		else if (token == "go" && position_init)
 		{
-			if (!(iss >> token))
+			int depth = -1;
+			int movetime = -1;
+			int wtime = -1, btime = -1;
+			int winc = 0, binc = 0;
+
+			while (iss >> token)
 			{
-				auto move = Engine::best_move(position, 4);
-				std::cout << "bestmove " << square_to_string(move.from) << square_to_string(move.to) << std::endl;
-			}
-			else if (token == "perft")
-			{
-				iss >> token;
-				if (is_number(token.c_str()[0]))
+				if (token == "depth") iss >> depth;
+				else if (token == "movetime") iss >> movetime;
+				else if (token == "wtime") iss >> wtime;
+				else if (token == "btime") iss >> btime;
+				else if (token == "winc") iss >> winc;
+				else if (token == "binc") iss >> binc;
+
+				// debug tools
+				else if (token == "perft")
 				{
-					auto depth = std::stoi(token);
+					auto d = std::stoi(token);
 					size_t nodes = 0;
-					for (int i{ 1 }; i <= depth; ++i)
+					for (int i{ 1 }; i <= d; ++i)
 					{
 						auto temp = perft(position, i);
 						std::cout << "perft [" << i << "]: " << temp << "\n";
-						if (i == depth)
+						if (i == d)
 						{
 							nodes += temp;
 							std::cout << "Nodes searched: " << nodes << std::endl;
 						}
 					}
 				}
+				else if (token == "eval")
+				{
+					std::cout << "eval: " << engine.evaluate(position) << "\n";
+					continue;
+				}
 			}
-			else if (token == "eval")
+
+			int time_for_move = 0;
+
+			if (movetime != -1)
 			{
-				std::cout << "position evaluated to: " << Engine::evaluate(position) << std::endl;
+				time_for_move = movetime;
 			}
-			else if (token == "depth")
+			else if (wtime != -1)
 			{
-				iss >> token;
-				auto depth = std::stoi(token);
-				auto move = Engine::best_move(position, depth);
-				std::cout << "bestmove " << square_to_string(move.from) << square_to_string(move.to) << std::endl;
+				if (position.current_turn == Color::white)
+					time_for_move = wtime / 30 + winc;
+				else
+					time_for_move = btime / 30 + binc;
+			}
+
+			// if (time_for_move < 50) depth = 3;
+			// else if (time_for_move < 200) depth = 4;
+			// else depth = 5;
+
+			depth = 4;
+
+			if (depth != -1)
+			{
+				engine.search_depth(position, depth);
+			}
+			else if (time_for_move > 0)
+			{
+				engine.search_time(position, time_for_move);
+			}
+			else
+			{
+				engine.search_depth(position, 4);
 			}
 		}
 		else if (token == "quit")
@@ -112,6 +151,7 @@ void Uci::run()
 			std::cout << "quitting...\n";
 			std::exit(0);
 		}
+		else if (token == "stop" && position_init) engine.stop();
 		else
 		{
 			std::cout << "unknown command : " << token << std::endl;
@@ -127,7 +167,7 @@ u64 Uci::perft(Position &b, int depth) {
 	u64 nodes = 0;
 	MoveList moves = b.get_legal_moves();
 
-	for (size_t i = 0; i < moves.count; ++i)
+	for (auto i = 0; i < moves.count; ++i)
 	{
 		Move m = moves[i];
 		b.make_move(m);
@@ -136,4 +176,3 @@ u64 Uci::perft(Position &b, int depth) {
 	}
 	return nodes;
 }
-

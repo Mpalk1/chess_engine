@@ -9,11 +9,54 @@
 #include <string_view>
 #include <unordered_map>
 
+namespace
+{
+PieceType promoted_piece_for_move(MoveType type, Color side)
+{
+	const bool is_white = (side == Color::white);
+	switch (type)
+	{
+	case MoveType::promotion_queen:
+	case MoveType::promotion_queen_capture:
+		return is_white ? PieceType::white_queen : PieceType::black_queen;
+	case MoveType::promotion_rook:
+	case MoveType::promotion_rook_capture:
+		return is_white ? PieceType::white_rook : PieceType::black_rook;
+	case MoveType::promotion_bishop:
+	case MoveType::promotion_bishop_capture:
+		return is_white ? PieceType::white_bishop : PieceType::black_bishop;
+	default:
+		return is_white ? PieceType::white_knight : PieceType::black_knight;
+	}
+}
+
+void clear_square(Position& pos, Square sq, PieceType piece)
+{
+	if (sq == Square::none || piece == PieceType::none)
+		return;
+
+	const int idx = static_cast<int>(sq);
+	pos.mailbox[idx] = PieceType::none;
+	pos.bitboards[piece] &= ~(1ULL << idx);
+}
+
+void set_square(Position& pos, Square sq, PieceType piece)
+{
+	if (sq == Square::none || piece == PieceType::none)
+		return;
+
+	const int idx = static_cast<int>(sq);
+	pos.mailbox[idx] = piece;
+	pos.bitboards[piece] |= (1ULL << idx);
+}
+}
+
 Position::Position() = default;
 
 void Position::clear()
 {
 	bitboards.clear();
+	mailbox.fill(PieceType::none);
 	move_list.clear();
 	current_turn = Color::white;
 	castling_rights = 0;
@@ -25,33 +68,19 @@ void Position::clear()
 
 void Position::make_move(Square from, Square to)
 {
-	const u64 from_bb = 1ULL << static_cast<int>(from);
-	const u64 to_bb = 1ULL << static_cast<int>(to);
+	if (from == Square::none || to == Square::none)
+		return;
 
-	PieceType moving_piece = PieceType::none;
-	for (int i = 0; i < 12; ++i)
-	{
-		if (bitboards[i] & from_bb)
-		{
-			moving_piece = static_cast<PieceType>(i);
-			break;
-		}
-	}
+	const PieceType moving_piece = mailbox[static_cast<int>(from)];
+	const PieceType captured_piece = mailbox[static_cast<int>(to)];
 
 	if (moving_piece == PieceType::none)
 		return;
 
-	for (int i = 0; i < 12; ++i)
-	{
-		if (bitboards[i] & to_bb)
-		{
-			bitboards[static_cast<PieceType>(i)] &= ~to_bb;
-			break;
-		}
-	}
-
-	bitboards[moving_piece] &= ~from_bb;
-	bitboards[moving_piece] |= to_bb;
+	if (captured_piece != PieceType::none)
+		clear_square(*this, to, captured_piece);
+	clear_square(*this, from, moving_piece);
+	set_square(*this, to, moving_piece);
 
 	current_turn = (current_turn == Color::white) ? Color::black : Color::white;
 }
@@ -61,9 +90,6 @@ void Position::unmake_move(Move& move)
 	if (move.piece == PieceType::none)
 		return;
 
-	const u64 from_bb = 1ULL << static_cast<int>(move.from);
-	const u64 to_bb = 1ULL << static_cast<int>(move.to);
-
 	current_turn = move.prev_turn;
 	castling_rights = move.prev_castling_rights;
 	en_passant_square = move.prev_enpassant_sq;
@@ -72,92 +98,63 @@ void Position::unmake_move(Move& move)
 
 	if (move.type == MoveType::kingside_castle)
 	{
-		bitboards[move.piece] &= ~to_bb;
-		bitboards[move.piece] |= from_bb;
+		clear_square(*this, move.to, move.piece);
+		set_square(*this, move.from, move.piece);
 
 		if (current_turn == Color::white)
 		{
-			bitboards[PieceType::white_rook] &=
-				~(1ULL << static_cast<int>(Square::F1));
-			bitboards[PieceType::white_rook] |=
-				(1ULL << static_cast<int>(Square::H1));
+			clear_square(*this, Square::F1, PieceType::white_rook);
+			set_square(*this, Square::H1, PieceType::white_rook);
 		}
 		else
 		{
-			bitboards[PieceType::black_rook] &=
-				~(1ULL << static_cast<int>(Square::F8));
-			bitboards[PieceType::black_rook] |=
-				(1ULL << static_cast<int>(Square::H8));
+			clear_square(*this, Square::F8, PieceType::black_rook);
+			set_square(*this, Square::H8, PieceType::black_rook);
 		}
 	}
 	else if (move.type == MoveType::queenside_castle)
 	{
-		bitboards[move.piece] &= ~to_bb;
-		bitboards[move.piece] |= from_bb;
+		clear_square(*this, move.to, move.piece);
+		set_square(*this, move.from, move.piece);
 
 		if (current_turn == Color::white)
 		{
-			bitboards[PieceType::white_rook] &=
-				~(1ULL << static_cast<int>(Square::D1));
-			bitboards[PieceType::white_rook] |=
-				(1ULL << static_cast<int>(Square::A1));
+			clear_square(*this, Square::D1, PieceType::white_rook);
+			set_square(*this, Square::A1, PieceType::white_rook);
 		}
 		else
 		{
-			bitboards[PieceType::black_rook] &=
-				~(1ULL << static_cast<int>(Square::D8));
-			bitboards[PieceType::black_rook] |=
-				(1ULL << static_cast<int>(Square::A8));
+			clear_square(*this, Square::D8, PieceType::black_rook);
+			set_square(*this, Square::A8, PieceType::black_rook);
 		}
 	}
 	else if (move.type == MoveType::en_passant)
 	{
-		bitboards[move.piece] &= ~to_bb;
-		bitboards[move.piece] |= from_bb;
+		clear_square(*this, move.to, move.piece);
+		set_square(*this, move.from, move.piece);
 
 		const int captured_sq = (current_turn == Color::white)
 			? static_cast<int>(move.to) - 8
 			: static_cast<int>(move.to) + 8;
-		bitboards[move.captured] |= (1ULL << captured_sq);
+		set_square(*this, make_square(captured_sq), move.captured);
 	}
 	else if (move.is_promotion())
 	{
-		const bool is_white = (current_turn == Color::white);
-		PieceType promo_piece;
-		switch (move.type)
-		{
-		case MoveType::promotion_queen:
-		case MoveType::promotion_queen_capture:
-			promo_piece = is_white ? PieceType::white_queen : PieceType::black_queen;
-			break;
-		case MoveType::promotion_rook:
-		case MoveType::promotion_rook_capture:
-			promo_piece = is_white ? PieceType::white_rook : PieceType::black_rook;
-			break;
-		case MoveType::promotion_bishop:
-		case MoveType::promotion_bishop_capture:
-			promo_piece =
-				is_white ? PieceType::white_bishop : PieceType::black_bishop;
-			break;
-		default:
-			promo_piece =
-				is_white ? PieceType::white_knight : PieceType::black_knight;
-			break;
-		}
+		const PieceType promo_piece = promoted_piece_for_move(move.type, current_turn);
 
-		bitboards[promo_piece] &= ~to_bb;
-		bitboards[move.piece] |= from_bb;
+		clear_square(*this, move.to, promo_piece);
+		set_square(*this, move.from, move.piece);
 
 		if (move.captured != PieceType::none)
-			bitboards[move.captured] |= to_bb;
+			set_square(*this, move.to, move.captured);
 	}
 	else
 	{
-		bitboards[move.piece] &= ~to_bb;
-		bitboards[move.piece] |= from_bb;
+		clear_square(*this, move.to, move.piece);
+		set_square(*this, move.from, move.piece);
 
 		if (move.captured != PieceType::none)
-			bitboards[move.captured] |= to_bb;
+			set_square(*this, move.to, move.captured);
 	}
 }
 
@@ -190,16 +187,8 @@ void Position::print() const
 		for (int file = 0; file < 8; file++)
 		{
 			const int square = rank * 8 + file;
-			char found = '.';
-
-			for (int i = 0; i < 12; i++)
-			{
-				if (bitboards[i] & (1ULL << square))
-				{
-					found = pieces[i];
-					break;
-				}
-			}
+			const PieceType piece = mailbox[square];
+			char found = (piece == PieceType::none) ? '.' : pieces[piece_val(piece)];
 			std::cout << found << ' ';
 		}
 		std::cout << '\n';
@@ -280,7 +269,9 @@ void Position::read_fen(const std::string& fen)
 			const int rank = 7 - (ctr / 8);
 			const int file = ctr % 8;
 			const int square = rank * 8 + file;
-			bitboards[it->second] |= (1ULL << square);
+			const auto idx = 1ULL << square;
+			bitboards[it->second] |= (idx);
+			mailbox[square] = it->second;
 			ctr++;
 		}
 	}
@@ -313,6 +304,7 @@ void Position::read_fen(const std::string& fen)
 
 	if (!fields[5].empty())
 		fullmove_number = std::stoi(std::string(fields[5]));
+
 }
 
 void Position::make_move(Move& move)
@@ -335,89 +327,61 @@ void Position::make_move(const Move& move)
 	previous_move.prev_fullmove_number = fullmove_number;
 	previous_move.prev_turn = current_turn;
 
-	const u64 from_bb = 1ULL << static_cast<int>(move.from);
-	const u64 to_bb = 1ULL << static_cast<int>(move.to);
+	const PieceType moving_piece = mailbox[static_cast<int>(move.from)];
+	if (moving_piece == PieceType::none)
+		return;
 
-	bitboards[move.piece] &= ~from_bb;
+	clear_square(*this, move.from, moving_piece);
 
 	if (move.type == MoveType::kingside_castle)
 	{
-		bitboards[move.piece] |= to_bb;
+		set_square(*this, move.to, moving_piece);
 		if (current_turn == Color::white)
 		{
-			bitboards[PieceType::white_rook] &=
-				~(1ULL << static_cast<int>(Square::H1));
-			bitboards[PieceType::white_rook] |=
-				(1ULL << static_cast<int>(Square::F1));
+			clear_square(*this, Square::H1, PieceType::white_rook);
+			set_square(*this, Square::F1, PieceType::white_rook);
 		}
 		else
 		{
-			bitboards[PieceType::black_rook] &=
-				~(1ULL << static_cast<int>(Square::H8));
-			bitboards[PieceType::black_rook] |=
-				(1ULL << static_cast<int>(Square::F8));
+			clear_square(*this, Square::H8, PieceType::black_rook);
+			set_square(*this, Square::F8, PieceType::black_rook);
 		}
 	}
 	else if (move.type == MoveType::queenside_castle)
 	{
-		bitboards[move.piece] |= to_bb;
+		set_square(*this, move.to, moving_piece);
 		if (current_turn == Color::white)
 		{
-			bitboards[PieceType::white_rook] &=
-				~(1ULL << static_cast<int>(Square::A1));
-			bitboards[PieceType::white_rook] |=
-				(1ULL << static_cast<int>(Square::D1));
+			clear_square(*this, Square::A1, PieceType::white_rook);
+			set_square(*this, Square::D1, PieceType::white_rook);
 		}
 		else
 		{
-			bitboards[PieceType::black_rook] &=
-				~(1ULL << static_cast<int>(Square::A8));
-			bitboards[PieceType::black_rook] |=
-				(1ULL << static_cast<int>(Square::D8));
+			clear_square(*this, Square::A8, PieceType::black_rook);
+			set_square(*this, Square::D8, PieceType::black_rook);
 		}
 	}
 	else if (move.type == MoveType::en_passant)
 	{
-		bitboards[move.piece] |= to_bb;
+		set_square(*this, move.to, moving_piece);
 		const int captured_sq = (current_turn == Color::white)
 			? static_cast<int>(move.to) - 8
 			: static_cast<int>(move.to) + 8;
-		bitboards[move.captured] &= ~(1ULL << captured_sq);
+		clear_square(*this, make_square(captured_sq), move.captured);
 	}
 	else if (move.is_promotion())
 	{
 		if (move.captured != PieceType::none)
-			bitboards[move.captured] &= ~to_bb;
+			clear_square(*this, move.to, move.captured);
 
-		const bool is_white = (current_turn == Color::white);
-		PieceType promo_piece;
-		switch (move.type)
-		{
-		case MoveType::promotion_queen:
-		case MoveType::promotion_queen_capture:
-			promo_piece = is_white ? PieceType::white_queen : PieceType::black_queen;
-			break;
-		case MoveType::promotion_rook:
-		case MoveType::promotion_rook_capture:
-			promo_piece = is_white ? PieceType::white_rook : PieceType::black_rook;
-			break;
-		case MoveType::promotion_bishop:
-		case MoveType::promotion_bishop_capture:
-			promo_piece =
-				is_white ? PieceType::white_bishop : PieceType::black_bishop;
-			break;
-		default:
-			promo_piece =
-				is_white ? PieceType::white_knight : PieceType::black_knight;
-			break;
-		}
-		bitboards[promo_piece] |= to_bb;
+		const PieceType promo_piece = promoted_piece_for_move(move.type, current_turn);
+		set_square(*this, move.to, promo_piece);
 	}
 	else
 	{
 		if (move.captured != PieceType::none)
-			bitboards[move.captured] &= ~to_bb;
-		bitboards[move.piece] |= to_bb;
+			clear_square(*this, move.to, move.captured);
+		set_square(*this, move.to, moving_piece);
 	}
 
 	castling_rights = move.castling_rights;
@@ -426,6 +390,13 @@ void Position::make_move(const Move& move)
 	if (current_turn == Color::black)
 		fullmove_number++;
 	current_turn = (current_turn == Color::white) ? Color::black : Color::white;
+}
+
+PieceType Position::piece_at(Square sq) const
+{
+	if (sq == Square::none)
+		return PieceType::none;
+	return mailbox[static_cast<int>(sq)];
 }
 
 void Position::make_move(const std::string &token)

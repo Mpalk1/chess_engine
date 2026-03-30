@@ -1,6 +1,7 @@
 #pragma once
-#include <unordered_map>
 #include <array>
+#include <thread>
+#include <atomic>
 
 #include "position.h"
 
@@ -15,11 +16,25 @@ constexpr std::array<int, 64> mirror_table(const std::array<int, 64>& table)
 
 struct Engine
 {
-    static int evaluate(Position& position);
-    static Move best_move(Position& position, int depth);
-    static int minimax(Position& position, int depth);
+    Engine();
+
+    void search(Position& position, double time);
+    void search(Position& position, int depth);
+    void search_depth(Position& position, int depth);
+    void search_time(Position& position, int depth);
+    int evaluate(Position& position);
+    int minimax(Position& position, int depth);
+    void stop();
+    void reset();
 
 private:
+    unsigned int thread_count{};
+    std::thread worker{};
+
+    std::atomic<bool> should_work{true};
+    std::atomic<bool> work_done{false};
+    Move best_move{};
+
     static int get_piece_value(Position& position, int i);
 
     static constexpr std::array<int, 12> pieces_values{100, 320, 330, 500, 900, 0,
