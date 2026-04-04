@@ -127,23 +127,23 @@ void Uci::run()
 					time_for_move = btime / 30 + binc;
 			}
 
-			// if (time_for_move < 50) depth = 3;
-			// else if (time_for_move < 200) depth = 4;
-			// else depth = 5;
-
-			depth = 4;
-
+			if (time_for_move < 50) depth = 4;
+			else if (time_for_move < 200) depth = 5;
+			else depth = 6;
+			std::cout << "depth: " << depth << std::endl;
 			if (depth != -1)
 			{
-				engine.search_depth(position, depth);
+				engine.search(position, depth);
 			}
 			else if (time_for_move > 0)
 			{
+				std::cout << "searching by time\n";
 				engine.search_time(position, time_for_move);
 			}
 			else
 			{
-				engine.search_depth(position, 4);
+				std::cout << "searching by depth\n";
+				// engine.search_depth(position, 4);
 			}
 		}
 		else if (token == "quit")

@@ -18,7 +18,7 @@ void Engine::search(Position &position, int depth)
     should_work.store(true);
     work_done.store(false);
                                                         //a ref for now because its only 1 thread
-    worker = std::thread{&Engine::search_depth, this, std::ref(position), depth};
+    worker = std::thread{&Engine::search_depth, this, std::ref(position), depth, -1000, 1000};
 
 }
 
@@ -37,7 +37,7 @@ void Engine::search(Position &position, double time)
 
 }
 
-void Engine::search_depth(Position& position, int depth)
+void Engine::search_depth(Position& position, int depth, int alpha, int beta)
 {
     int best_val = std::numeric_limits<int>::min();
 
@@ -46,7 +46,7 @@ void Engine::search_depth(Position& position, int depth)
     {
         if (!should_work.load()) break;
         position.make_move(moves[i]);
-        int val = -minimax(position, depth - 1);
+        int val = -minimax(position, depth - 1, -beta, -alpha);
         position.unmake_move(moves[i]);
 
         if (val > best_val)
@@ -54,6 +54,14 @@ void Engine::search_depth(Position& position, int depth)
             best_val = val;
             best_move = moves[i];
         }
+
+std::cout << "Move: " << square_to_string(moves[i].from) << square_to_string(moves[i].to)
+          << " Value: " << val << std::endl;
+
+
+        alpha = std::max(alpha, best_val);
+        if (alpha >= beta) break;
+
     }
     work_done.store(true);
     std::cout << "bestmove " << square_to_string(best_move.from) << square_to_string(best_move.to) << std::endl;
@@ -99,10 +107,10 @@ int Engine::evaluate(Position& position)
     //count mobility of pieces
     //count squares attacked
 
-    return position.current_turn == Color::white ? eval/100 : -eval/100; // flipping the sign because searching is from the current players perspective
+    return position.current_turn == Color::white ? eval : -eval; // flipping the sign because searching is from the current players perspective
 }
 
-int Engine::minimax(Position& position, int depth)
+int Engine::minimax(Position& position, int depth, int alpha, int beta)
 {
     if (depth == 0) return evaluate(position);
 
@@ -112,8 +120,11 @@ int Engine::minimax(Position& position, int depth)
     {
         if (!should_work.load()) break;
         position.make_move(moves[i]);
-        best = std::max(best, -minimax(position, depth - 1));
+        best = std::max(best, -minimax(position, depth - 1, -beta, -alpha));
         position.unmake_move(moves[i]);
+
+        alpha = std::max(alpha, best);
+        if (alpha >= beta) break;
     }
     return best;
 }

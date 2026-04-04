@@ -20,10 +20,10 @@ struct Engine
 
     void search(Position& position, double time);
     void search(Position& position, int depth);
-    void search_depth(Position& position, int depth);
+    void search_depth(Position& position, int depth, int alpha, int beta);
     void search_time(Position& position, int depth);
     int evaluate(Position& position);
-    int minimax(Position& position, int depth);
+    int minimax(Position& position, int depth, int alpha, int beta);
     void stop();
     void reset();
 
