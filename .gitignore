@@ -4,4 +4,5 @@
 out/
 CMakeSetting.json
 build/
+build_rel/
 test/venv/
