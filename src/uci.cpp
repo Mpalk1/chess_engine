@@ -127,9 +127,8 @@ void Uci::run()
 					time_for_move = btime / 30 + binc;
 			}
 
-			if (time_for_move < 50) depth = 4;
-			else if (time_for_move < 200) depth = 5;
-			else depth = 6;
+			if (time_for_move < 50 && time_for_move != 0) depth = 4;
+			else if (time_for_move != 0) depth = 5;
 			std::cout << "depth: " << depth << std::endl;
 			if (depth != -1)
 			{
@@ -150,6 +149,13 @@ void Uci::run()
 		{
 			std::cout << "quitting...\n";
 			std::exit(0);
+		}
+		else if (token == "print")
+		{
+			std::cout << "Board state:\n";
+			position.print();
+			std::cout << "Moves:\n";
+			position.move_list.print();
 		}
 		else if (token == "stop" && position_init) engine.stop();
 		else

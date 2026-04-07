@@ -1,0 +1,3 @@
+/home/maciek/CLionProjects/chess_engine/build_rel/CMakeFiles/chess_engine.dir
+/home/maciek/CLionProjects/chess_engine/build_rel/CMakeFiles/edit_cache.dir
+/home/maciek/CLionProjects/chess_engine/build_rel/CMakeFiles/rebuild_cache.dir

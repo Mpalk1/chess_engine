@@ -1,0 +1,50 @@
+[
+{
+  "directory": "/home/maciek/CLionProjects/chess_engine/build_rel",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/chess_engine.dir/src/bitboard.cpp.o -c /home/maciek/CLionProjects/chess_engine/src/bitboard.cpp",
+  "file": "/home/maciek/CLionProjects/chess_engine/src/bitboard.cpp",
+  "output": "CMakeFiles/chess_engine.dir/src/bitboard.cpp.o"
+},
+{
+  "directory": "/home/maciek/CLionProjects/chess_engine/build_rel",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/chess_engine.dir/src/board_list.cpp.o -c /home/maciek/CLionProjects/chess_engine/src/board_list.cpp",
+  "file": "/home/maciek/CLionProjects/chess_engine/src/board_list.cpp",
+  "output": "CMakeFiles/chess_engine.dir/src/board_list.cpp.o"
+},
+{
+  "directory": "/home/maciek/CLionProjects/chess_engine/build_rel",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/chess_engine.dir/src/engine.cpp.o -c /home/maciek/CLionProjects/chess_engine/src/engine.cpp",
+  "file": "/home/maciek/CLionProjects/chess_engine/src/engine.cpp",
+  "output": "CMakeFiles/chess_engine.dir/src/engine.cpp.o"
+},
+{
+  "directory": "/home/maciek/CLionProjects/chess_engine/build_rel",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/chess_engine.dir/src/generator.cpp.o -c /home/maciek/CLionProjects/chess_engine/src/generator.cpp",
+  "file": "/home/maciek/CLionProjects/chess_engine/src/generator.cpp",
+  "output": "CMakeFiles/chess_engine.dir/src/generator.cpp.o"
+},
+{
+  "directory": "/home/maciek/CLionProjects/chess_engine/build_rel",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/chess_engine.dir/src/main.cpp.o -c /home/maciek/CLionProjects/chess_engine/src/main.cpp",
+  "file": "/home/maciek/CLionProjects/chess_engine/src/main.cpp",
+  "output": "CMakeFiles/chess_engine.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/maciek/CLionProjects/chess_engine/build_rel",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/chess_engine.dir/src/move_list.cpp.o -c /home/maciek/CLionProjects/chess_engine/src/move_list.cpp",
+  "file": "/home/maciek/CLionProjects/chess_engine/src/move_list.cpp",
+  "output": "CMakeFiles/chess_engine.dir/src/move_list.cpp.o"
+},
+{
+  "directory": "/home/maciek/CLionProjects/chess_engine/build_rel",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/chess_engine.dir/src/position.cpp.o -c /home/maciek/CLionProjects/chess_engine/src/position.cpp",
+  "file": "/home/maciek/CLionProjects/chess_engine/src/position.cpp",
+  "output": "CMakeFiles/chess_engine.dir/src/position.cpp.o"
+},
+{
+  "directory": "/home/maciek/CLionProjects/chess_engine/build_rel",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/chess_engine.dir/src/uci.cpp.o -c /home/maciek/CLionProjects/chess_engine/src/uci.cpp",
+  "file": "/home/maciek/CLionProjects/chess_engine/src/uci.cpp",
+  "output": "CMakeFiles/chess_engine.dir/src/uci.cpp.o"
+}
+]

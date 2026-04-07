@@ -28,8 +28,8 @@ struct MoveList
       move.print();
     }
   }
-  const Move &begin() const { return moves[0]; }
-  const Move &end() const { return moves[count]; }
+  const Move* begin() const { return &moves[0]; }
+  const Move* end() const { return &moves[count]; }
   Move& operator[](int idx) { return moves[idx]; }
   const Move& operator[](int idx) const { return moves[idx]; }
 };
