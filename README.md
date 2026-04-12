@@ -1,56 +1,90 @@
 # chess_engine
 
-A chess engine written in C++20. Currently a work in progress — the focus right now is on getting move generation **completely correct** before anything else.
+A chess engine written in C++20.
 
-## What's working
 
-- Loads any position via FEN
-- Generates all legal moves for any position (pawns, knights, bishops, rooks, queens, king — including castling, en passant, and promotions)
-- Makes and unmakes moves without corrupting state
-- Validates correctness via **perft** — counting leaf nodes at a given depth and comparing against known values
-- Minimal UCI interface (`uci`, `isready`, `position`, `go perft <depth>`)
+## Current status
 
-## What's next
+- FEN loading is supported (`position fen ...`)
+- Legal move generation for every position
+- Make/unmake moves
+- searching for best move (`go depth <n>`)
+- UCI loop is implemented and still evolving
 
-- Search (minimax / alpha-beta)
-- Evaluation
-- Full UCI compliance so it can be plugged into a GUI
-
-## Status
-
-Move generation appears correct. Perft results match expected values at standard depths. The engine can't play yet — that's next.
-
----
 
 ## Build
 
-**Requirements:** CMake ≥ 3.28 · C++20 compiler · Ninja · Git
+Requirements:
 
-### 1) Clone with submodules
+- CMake 3.28+
+- C++20 compiler (GCC/Clang)
+- `make` or `ninja` (any CMake-supported generator)
+
 ```bash
-git clone --recurse-submodules https://github.com/Mpalk1/chess_engine.git
+git clone https://github.com/Mpalk1/chess_engine.git
 cd chess_engine
-```
-
-### 2) Configure
-```bash
-cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_SCAN_FOR_MODULES=OFF
-```
-
-### 3) Build
-```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-### 4) Run
+Run:
+
 ```bash
 ./build/chess_engine
 ```
 
-The engine speaks UCI, so you can type commands directly or connect it to any UCI-compatible GUI (Arena, Cute Chess, etc.) - wip.
-```
+## Quick UCI usage
+
+Minimal example session:
+
+```text
 uci
 isready
 position startpos
-go perft 5
+go depth 4
+stop
+quit
 ```
+
+Commands currently handled in `src/uci.cpp` include:
+
+- `uci`
+- `isready`
+- `ucinewgame`
+- `position startpos [moves ...]`
+- `position fen <fen> [moves ...]`
+- `go depth <n>`
+- `go movetime <ms>`
+- `go wtime <ms> btime <ms> [winc <ms>] [binc <ms>]`
+- `stop`
+- `print`
+- `quit`
+
+## Testing
+
+The repository includes an automated perft comparison script in `test/auto_perft_test.py` that checks positions against `python-chess`.
+
+From the repository root:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r test/requirements.txt
+python test/auto_perft_test.py
+```
+
+By default, the script expects the engine binary at `build/chess_engine`.
+
+## Project layout
+
+- `src/` - engine source code
+- `test/` - perft automation and test data
+- `run.sh` - quick local build/run helper
+
+## Roadmap
+
+- Improve UCI completeness and robustness
+- Improve search quality and time management
+- Expand validation and regression tests
+- Tune evaluation and add stronger positional heuristics
+
