@@ -19,6 +19,7 @@ struct Position
 	int fullmove_number{ 1 };
 	Move previous_move{};
 	std::array<PieceType, 64> mailbox{};
+	u64 zobrist_key{ 0 };
 
 	u64 get_empty_squares() const { return bitboards.empty(); }
 	Position();

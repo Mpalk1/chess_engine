@@ -4,6 +4,8 @@
 #include <atomic>
 
 #include "position.h"
+#include "transposition_table.h"
+#include "search_stats.h"
 
 constexpr std::array<int, 64> mirror_table(const std::array<int, 64>& table)
 {
@@ -23,9 +25,11 @@ struct Engine
     void search_depth(Position& position, int depth, int alpha, int beta);
     void search_time(Position& position, int depth);
     int evaluate(Position& position);
-    int minimax(Position& position, int depth, int alpha, int beta);
+    int minimax(Position& position, int depth, int alpha, int beta, std::vector<Move>& pv);
     void stop();
     void reset();
+    void clear_transposition_table() { transposition_table.clear(); }
+    void output_info(bool force = false) const;
 
 private:
     unsigned int thread_count{};
@@ -34,6 +38,9 @@ private:
     std::atomic<bool> should_work{true};
     std::atomic<bool> work_done{false};
     Move best_move{};
+    TranspositionTable transposition_table{64};
+    SearchStats stats;
+    uint64_t last_info_time = 0;  // Last time we printed info line (ms)
 
     static int get_piece_value(Position& position, int i);
 
