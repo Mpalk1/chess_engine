@@ -2,6 +2,15 @@
 #include <iostream>
 #include "types.h"
 
+struct MoveState
+{
+	u8 castling_rights{0};
+	Square enpassant_sq{Square::none};
+	u8 halfmove_clock{0};
+	int fullmove_number{1};
+	Color turn{Color::white};
+};
+
 struct Move
 {
 	Square from; // square 0-63
@@ -15,36 +24,22 @@ struct Move
 	Square enpassant_sq; // post-move en passant square
 	u8 halfmove_clock; // post-move halfmove clock
 
-	// board state before this move was made
-	u8 prev_castling_rights;
-	Square prev_enpassant_sq;
-	u8 prev_halfmove_clock;
-	int prev_fullmove_number;
-	Color prev_turn;
-
         Move()
             : from(Square::A1), to(Square::A1), piece(PieceType::none),
               captured(PieceType::none), type(MoveType::normal),
-              flags(MoveFlag::none), castling_rights(0),
-              enpassant_sq(Square::none), halfmove_clock(0),
-              prev_castling_rights(0), prev_enpassant_sq(Square::none),
-              prev_halfmove_clock(0), prev_fullmove_number(1),
-              prev_turn(Color::white) {
+		      flags(MoveFlag::none), castling_rights(0),
+		      enpassant_sq(Square::none), halfmove_clock(0) {
 	}
 
 	Move(Square from, Square to, PieceType piece, MoveType type = MoveType::normal) :
 		from(from), to(to), piece(piece), captured(PieceType::none), type(type), flags(MoveFlag::none),
-		castling_rights(0), enpassant_sq(Square::none), halfmove_clock(0),
-		prev_castling_rights(0), prev_enpassant_sq(Square::none), prev_halfmove_clock(0), prev_fullmove_number(1),
-		prev_turn(Color::white)
+		castling_rights(0), enpassant_sq(Square::none), halfmove_clock(0)
 	{}
 
 	Move(Square from, Square to, PieceType piece, MoveType type, PieceType captured,
 		u8 castling_rights, Square en_passant_sq, u8 halfmove_clock) :
 		from(from), to(to), piece(piece), captured(captured), type(type), flags(MoveFlag::none),
-		castling_rights(castling_rights), enpassant_sq(en_passant_sq), halfmove_clock(halfmove_clock),
-		prev_castling_rights(0), prev_enpassant_sq(Square::none), prev_halfmove_clock(0), prev_fullmove_number(1),
-		prev_turn(Color::white)
+		castling_rights(castling_rights), enpassant_sq(en_passant_sq), halfmove_clock(halfmove_clock)
 	{}
 
 	bool is_capture() const { return captured != PieceType::none; }

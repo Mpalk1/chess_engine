@@ -151,11 +151,12 @@ void Engine::search_depth(Position& position, int depth, int alpha, int beta)
     for (Move move : moves)
     {
         if (!should_work.load()) break;
-        position.make_move(move);
+        MoveState state{};
+        position.apply_move(move, state);
         
         std::vector<Move> pv;
         int val = -minimax(position, depth - 1, -beta, -alpha, pv);
-        position.unmake_move(move);
+        position.undo_move(move, state);
 
         if (val > best_val)
         {
@@ -279,11 +280,12 @@ int Engine::minimax(Position& position, int depth, int alpha, int beta, std::vec
     for (Move move : moves)
     {
         if (!should_work.load()) break;
-        position.make_move(move);
+        MoveState state{};
+        position.apply_move(move, state);
         
         std::vector<Move> child_pv;
         int val = -minimax(position, depth - 1, -beta, -alpha, child_pv);
-        position.unmake_move(move);
+        position.undo_move(move, state);
 
         if (val > best)
         {

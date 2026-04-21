@@ -17,7 +17,6 @@ struct Position
 	Square en_passant_square{ Square::none };
 	u8 halfmove_clock{ 0 };
 	int fullmove_number{ 1 };
-	Move previous_move{};
 	std::array<PieceType, 64> mailbox{};
 	u64 zobrist_key{ 0 };
 
@@ -25,12 +24,9 @@ struct Position
 	Position();
 	void clear();
 	void read_fen(const std::string& fen);
-	void make_move(Square from, Square to);
-	void make_move(Move& move);
-	void make_move(const Move& move);
+	void apply_move(const Move& move, MoveState& state);
+	void undo_move(const Move& move, const MoveState& state);
 	void make_move(const std::string& token);
-	void unmake_move(Square from, Square to);
-	void unmake_move(Move& move);
 	PieceType piece_at(Square sq) const;
 	MoveList& get_legal_moves();
 	MoveList& get_pseudo_legal_moves();

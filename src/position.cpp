@@ -64,46 +64,26 @@ void Position::clear()
 	en_passant_square = Square::none;
 	halfmove_clock = 0;
 	fullmove_number = 1;
-	previous_move = Move{};
 	zobrist_key = 0;
 }
 
-void Position::make_move(Square from, Square to)
+void Position::apply_move(const Move& move, MoveState& state)
 {
-	if (from == Square::none || to == Square::none)
-		return;
+	state.castling_rights = castling_rights;
+	state.enpassant_sq = en_passant_square;
+	state.halfmove_clock = halfmove_clock;
+	state.fullmove_number = fullmove_number;
+	state.turn = current_turn;
 
-	const PieceType moving_piece = mailbox[static_cast<int>(from)];
-	const PieceType captured_piece = mailbox[static_cast<int>(to)];
-
-	if (moving_piece == PieceType::none)
-		return;
-
-	if (captured_piece != PieceType::none)
-		clear_square(*this, to, captured_piece);
-	clear_square(*this, from, moving_piece);
-	set_square(*this, to, moving_piece);
-
-	current_turn = (current_turn == Color::white) ? Color::black : Color::white;
-}
-
-void Position::unmake_move(Move& move)
-{
 	if (move.piece == PieceType::none)
 		return;
-
-	current_turn = move.prev_turn;
-	castling_rights = move.prev_castling_rights;
-	en_passant_square = move.prev_enpassant_sq;
-	halfmove_clock = move.prev_halfmove_clock;
-	fullmove_number = move.prev_fullmove_number;
 
 	if (move.type == MoveType::kingside_castle)
 	{
 		clear_square(*this, move.to, move.piece);
 		set_square(*this, move.from, move.piece);
 
-		if (current_turn == Color::white)
+		if (state.turn == Color::white)
 		{
 			clear_square(*this, Square::F1, PieceType::white_rook);
 			set_square(*this, Square::H1, PieceType::white_rook);
@@ -119,7 +99,7 @@ void Position::unmake_move(Move& move)
 		clear_square(*this, move.to, move.piece);
 		set_square(*this, move.from, move.piece);
 
-		if (current_turn == Color::white)
+		if (state.turn == Color::white)
 		{
 			clear_square(*this, Square::D1, PieceType::white_rook);
 			set_square(*this, Square::A1, PieceType::white_rook);
@@ -135,7 +115,7 @@ void Position::unmake_move(Move& move)
 		clear_square(*this, move.to, move.piece);
 		set_square(*this, move.from, move.piece);
 
-		const int captured_sq = (current_turn == Color::white)
+		const int captured_sq = (state.turn == Color::white)
 			? static_cast<int>(move.to) - 8
 			: static_cast<int>(move.to) + 8;
 		set_square(*this, make_square(captured_sq), move.captured);
@@ -160,12 +140,76 @@ void Position::unmake_move(Move& move)
 	}
 }
 
-void Position::unmake_move(Square from, Square to)
+void Position::undo_move(const Move& move, const MoveState& state)
 {
-	if (previous_move.from == from && previous_move.to == to)
+	if (move.piece == PieceType::none)
+		return;
+
+	current_turn = state.turn;
+	castling_rights = state.castling_rights;
+	en_passant_square = state.enpassant_sq;
+	halfmove_clock = state.halfmove_clock;
+	fullmove_number = state.fullmove_number;
+
+	if (move.type == MoveType::kingside_castle)
 	{
-		unmake_move(previous_move);
-		previous_move = Move{};
+		clear_square(*this, move.to, move.piece);
+		set_square(*this, move.from, move.piece);
+
+		if (state.turn == Color::white)
+		{
+			clear_square(*this, Square::F1, PieceType::white_rook);
+			set_square(*this, Square::H1, PieceType::white_rook);
+		}
+		else
+		{
+			clear_square(*this, Square::F8, PieceType::black_rook);
+			set_square(*this, Square::H8, PieceType::black_rook);
+		}
+	}
+	else if (move.type == MoveType::queenside_castle)
+	{
+		clear_square(*this, move.to, move.piece);
+		set_square(*this, move.from, move.piece);
+
+		if (state.turn == Color::white)
+		{
+			clear_square(*this, Square::D1, PieceType::white_rook);
+			set_square(*this, Square::A1, PieceType::white_rook);
+		}
+		else
+		{
+			clear_square(*this, Square::D8, PieceType::black_rook);
+			set_square(*this, Square::A8, PieceType::black_rook);
+		}
+	}
+	else if (move.type == MoveType::en_passant)
+	{
+		clear_square(*this, move.to, move.piece);
+		set_square(*this, move.from, move.piece);
+
+		const int captured_sq = (state.turn == Color::white)
+			? static_cast<int>(move.to) - 8
+			: static_cast<int>(move.to) + 8;
+		set_square(*this, make_square(captured_sq), move.captured);
+	}
+	else if (move.is_promotion())
+	{
+		const PieceType promo_piece = promoted_piece_for_move(move.type, state.turn);
+
+		clear_square(*this, move.to, promo_piece);
+		set_square(*this, move.from, move.piece);
+
+		if (move.captured != PieceType::none)
+			set_square(*this, move.to, move.captured);
+	}
+	else
+	{
+		clear_square(*this, move.to, move.piece);
+		set_square(*this, move.from, move.piece);
+
+		if (move.captured != PieceType::none)
+			set_square(*this, move.to, move.captured);
 	}
 }
 
@@ -311,141 +355,6 @@ void Position::read_fen(const std::string& fen)
 	zobrist_key = Zobrist::calculate_hash(*this);
 }
 
-void Position::make_move(Move& move)
-{
-	move.prev_castling_rights = castling_rights;
-	move.prev_enpassant_sq = en_passant_square;
-	move.prev_halfmove_clock = halfmove_clock;
-	move.prev_fullmove_number = fullmove_number;
-	move.prev_turn = current_turn;
-
-	make_move(static_cast<const Move&>(move));
-}
-
-void Position::make_move(const Move& move)
-{
-	previous_move = move;
-	previous_move.prev_castling_rights = castling_rights;
-	previous_move.prev_enpassant_sq = en_passant_square;
-	previous_move.prev_halfmove_clock = halfmove_clock;
-	previous_move.prev_fullmove_number = fullmove_number;
-	previous_move.prev_turn = current_turn;
-
-	// Update zobrist hash for side to move
-	zobrist_key ^= Zobrist::side_key;
-
-	// Remove old castling rights from zobrist hash
-	zobrist_key ^= Zobrist::castling_keys[castling_rights];
-
-	// Remove old en passant square from zobrist hash if valid
-	if (en_passant_square != Square::none)
-	{
-		zobrist_key ^= Zobrist::enpassant_keys[file(en_passant_square) + 1];
-	}
-
-	const PieceType moving_piece = mailbox[static_cast<int>(move.from)];
-	if (moving_piece == PieceType::none)
-		return;
-
-	// Remove moving piece from its old square
-	zobrist_key ^= Zobrist::piece_keys[piece_val(moving_piece) * 64 + static_cast<int>(move.from)];
-
-	clear_square(*this, move.from, moving_piece);
-
-	if (move.type == MoveType::kingside_castle)
-	{
-		set_square(*this, move.to, moving_piece);
-		zobrist_key ^= Zobrist::piece_keys[piece_val(moving_piece) * 64 + static_cast<int>(move.to)];
-
-		if (current_turn == Color::white)
-		{
-			zobrist_key ^= Zobrist::piece_keys[piece_val(PieceType::white_rook) * 64 + static_cast<int>(Square::H1)];
-			clear_square(*this, Square::H1, PieceType::white_rook);
-			set_square(*this, Square::F1, PieceType::white_rook);
-			zobrist_key ^= Zobrist::piece_keys[piece_val(PieceType::white_rook) * 64 + static_cast<int>(Square::F1)];
-		}
-		else
-		{
-			zobrist_key ^= Zobrist::piece_keys[piece_val(PieceType::black_rook) * 64 + static_cast<int>(Square::H8)];
-			clear_square(*this, Square::H8, PieceType::black_rook);
-			set_square(*this, Square::F8, PieceType::black_rook);
-			zobrist_key ^= Zobrist::piece_keys[piece_val(PieceType::black_rook) * 64 + static_cast<int>(Square::F8)];
-		}
-	}
-	else if (move.type == MoveType::queenside_castle)
-	{
-		set_square(*this, move.to, moving_piece);
-		zobrist_key ^= Zobrist::piece_keys[piece_val(moving_piece) * 64 + static_cast<int>(move.to)];
-
-		if (current_turn == Color::white)
-		{
-			zobrist_key ^= Zobrist::piece_keys[piece_val(PieceType::white_rook) * 64 + static_cast<int>(Square::A1)];
-			clear_square(*this, Square::A1, PieceType::white_rook);
-			set_square(*this, Square::D1, PieceType::white_rook);
-			zobrist_key ^= Zobrist::piece_keys[piece_val(PieceType::white_rook) * 64 + static_cast<int>(Square::D1)];
-		}
-		else
-		{
-			zobrist_key ^= Zobrist::piece_keys[piece_val(PieceType::black_rook) * 64 + static_cast<int>(Square::A8)];
-			clear_square(*this, Square::A8, PieceType::black_rook);
-			set_square(*this, Square::D8, PieceType::black_rook);
-			zobrist_key ^= Zobrist::piece_keys[piece_val(PieceType::black_rook) * 64 + static_cast<int>(Square::D8)];
-		}
-	}
-	else if (move.type == MoveType::en_passant)
-	{
-		set_square(*this, move.to, moving_piece);
-		zobrist_key ^= Zobrist::piece_keys[piece_val(moving_piece) * 64 + static_cast<int>(move.to)];
-
-		const int captured_sq = (current_turn == Color::white)
-			? static_cast<int>(move.to) - 8
-			: static_cast<int>(move.to) + 8;
-		zobrist_key ^= Zobrist::piece_keys[piece_val(move.captured) * 64 + captured_sq];
-		clear_square(*this, make_square(captured_sq), move.captured);
-	}
-	else if (move.is_promotion())
-	{
-		if (move.captured != PieceType::none)
-		{
-			zobrist_key ^= Zobrist::piece_keys[piece_val(move.captured) * 64 + static_cast<int>(move.to)];
-			clear_square(*this, move.to, move.captured);
-		}
-
-		const PieceType promo_piece = promoted_piece_for_move(move.type, current_turn);
-		set_square(*this, move.to, promo_piece);
-		zobrist_key ^= Zobrist::piece_keys[piece_val(promo_piece) * 64 + static_cast<int>(move.to)];
-	}
-	else
-	{
-		if (move.captured != PieceType::none)
-		{
-			zobrist_key ^= Zobrist::piece_keys[piece_val(move.captured) * 64 + static_cast<int>(move.to)];
-			clear_square(*this, move.to, move.captured);
-		}
-		set_square(*this, move.to, moving_piece);
-		zobrist_key ^= Zobrist::piece_keys[piece_val(moving_piece) * 64 + static_cast<int>(move.to)];
-	}
-
-	castling_rights = move.castling_rights;
-	en_passant_square = move.enpassant_sq;
-	halfmove_clock = move.halfmove_clock;
-	if (current_turn == Color::black)
-		fullmove_number++;
-	current_turn = (current_turn == Color::white) ? Color::black : Color::white;
-
-	// Add new castling rights to zobrist hash
-	zobrist_key ^= Zobrist::castling_keys[castling_rights];
-
-	// Add new en passant square to zobrist hash if valid
-	if (en_passant_square != Square::none)
-	{
-		zobrist_key ^= Zobrist::enpassant_keys[file(en_passant_square) + 1];
-	}
-
-	// XOR side to move again (we're at the new side now)
-	zobrist_key ^= Zobrist::side_key;
-}
-
 PieceType Position::piece_at(Square sq) const
 {
 	if (sq == Square::none)
@@ -513,7 +422,8 @@ void Position::make_move(const std::string &token)
 			continue;
 		}
 
-		make_move(move);
+		MoveState state{};
+		apply_move(move, state);
 		return;
 	}
 }

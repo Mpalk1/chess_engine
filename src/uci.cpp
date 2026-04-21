@@ -176,9 +176,10 @@ u64 Uci::perft(Position &b, int depth) {
 	for (auto i = 0; i < moves.count; ++i)
 	{
 		Move m = moves[i];
-		b.make_move(m);
+		MoveState state{};
+		b.apply_move(m, state);
 		nodes += perft(b, depth - 1);
-		b.unmake_move(m);
+		b.undo_move(m, state);
 	}
 	return nodes;
 }

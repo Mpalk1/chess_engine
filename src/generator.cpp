@@ -153,7 +153,8 @@ void Generator::filter_legal_moves(Position& position, MoveList& moves)
 				continue;
 		}
 
-		position.make_move(candidate);
+		MoveState state{};
+		position.apply_move(candidate, state);
 
 		const Color side_just_moved =
 			(position.current_turn == Color::white) ? Color::black : Color::white;
@@ -165,7 +166,7 @@ void Generator::filter_legal_moves(Position& position, MoveList& moves)
 		const bool in_check = (king_square == Square::none) ||
 			is_square_attacked_by(position, king_square, position.current_turn);
 
-		position.unmake_move(candidate);
+		position.undo_move(candidate, state);
 
 		if (!in_check)
 			moves[write_idx++] = candidate;
