@@ -2,10 +2,23 @@
 #include <array>
 #include <thread>
 #include <atomic>
+#include <chrono>
 
 #include "position.h"
 #include "transposition_table.h"
 #include "search_stats.h"
+
+struct SearchLimits
+{
+    int depth = 64;
+    int movetime_ms = -1;
+    int wtime_ms = -1;
+    int btime_ms = -1;
+    int winc_ms = 0;
+    int binc_ms = 0;
+    int movestogo = -1;
+    bool infinite = false;
+};
 
 constexpr std::array<int, 64> mirror_table(const std::array<int, 64>& table)
 {
@@ -19,13 +32,13 @@ constexpr std::array<int, 64> mirror_table(const std::array<int, 64>& table)
 struct Engine
 {
     Engine();
+    ~Engine();
 
-    void search(Position& position, double time);
+    void search(Position& position, const SearchLimits& limits);
     void search(Position& position, int depth);
-    void search_depth(Position& position, int depth, int alpha, int beta);
-    void search_time(Position& position, int depth);
+    void search_time(Position& position, int time_ms);
     int evaluate(Position& position);
-    int minimax(Position& position, int depth, int alpha, int beta, std::vector<Move>& pv);
+    int minimax(Position& position, int depth, int alpha, int beta, std::vector<Move>& pv, int ply);
     void stop();
     void reset();
     void clear_transposition_table() { transposition_table.clear(); }
@@ -41,8 +54,15 @@ private:
     TranspositionTable transposition_table{64};
     SearchStats stats;
     uint64_t last_info_time = 0;  // Last time we printed info line (ms)
+    std::chrono::steady_clock::time_point hard_stop_time{};
+    uint64_t soft_time_limit_ms = 0;
+    bool use_time_limit = false;
+    bool iteration_aborted = false;
 
     static int get_piece_value(Position& position, int i);
+    bool should_stop_search() const;
+    void search_worker(Position& position, SearchLimits limits);
+    int calculate_time_budget_ms(const Position& position, const SearchLimits& limits) const;
 
     static constexpr std::array<int, 12> pieces_values{100, 320, 330, 500, 900, 0,
                                                        100, 320, 330, 500, 900, 0};

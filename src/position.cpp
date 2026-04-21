@@ -80,64 +80,70 @@ void Position::apply_move(const Move& move, MoveState& state)
 
 	if (move.type == MoveType::kingside_castle)
 	{
-		clear_square(*this, move.to, move.piece);
-		set_square(*this, move.from, move.piece);
+		clear_square(*this, move.from, move.piece);
+		set_square(*this, move.to, move.piece);
 
 		if (state.turn == Color::white)
 		{
-			clear_square(*this, Square::F1, PieceType::white_rook);
-			set_square(*this, Square::H1, PieceType::white_rook);
+			clear_square(*this, Square::H1, PieceType::white_rook);
+			set_square(*this, Square::F1, PieceType::white_rook);
 		}
 		else
 		{
-			clear_square(*this, Square::F8, PieceType::black_rook);
-			set_square(*this, Square::H8, PieceType::black_rook);
+			clear_square(*this, Square::H8, PieceType::black_rook);
+			set_square(*this, Square::F8, PieceType::black_rook);
 		}
 	}
 	else if (move.type == MoveType::queenside_castle)
 	{
-		clear_square(*this, move.to, move.piece);
-		set_square(*this, move.from, move.piece);
+		clear_square(*this, move.from, move.piece);
+		set_square(*this, move.to, move.piece);
 
 		if (state.turn == Color::white)
 		{
-			clear_square(*this, Square::D1, PieceType::white_rook);
-			set_square(*this, Square::A1, PieceType::white_rook);
+			clear_square(*this, Square::A1, PieceType::white_rook);
+			set_square(*this, Square::D1, PieceType::white_rook);
 		}
 		else
 		{
-			clear_square(*this, Square::D8, PieceType::black_rook);
-			set_square(*this, Square::A8, PieceType::black_rook);
+			clear_square(*this, Square::A8, PieceType::black_rook);
+			set_square(*this, Square::D8, PieceType::black_rook);
 		}
 	}
 	else if (move.type == MoveType::en_passant)
 	{
-		clear_square(*this, move.to, move.piece);
-		set_square(*this, move.from, move.piece);
+		clear_square(*this, move.from, move.piece);
+		set_square(*this, move.to, move.piece);
 
 		const int captured_sq = (state.turn == Color::white)
 			? static_cast<int>(move.to) - 8
 			: static_cast<int>(move.to) + 8;
-		set_square(*this, make_square(captured_sq), move.captured);
+		clear_square(*this, make_square(captured_sq), move.captured);
 	}
 	else if (move.is_promotion())
 	{
 		const PieceType promo_piece = promoted_piece_for_move(move.type, current_turn);
 
-		clear_square(*this, move.to, promo_piece);
-		set_square(*this, move.from, move.piece);
-
+		clear_square(*this, move.from, move.piece);
 		if (move.captured != PieceType::none)
-			set_square(*this, move.to, move.captured);
+			clear_square(*this, move.to, move.captured);
+		set_square(*this, move.to, promo_piece);
 	}
 	else
 	{
-		clear_square(*this, move.to, move.piece);
-		set_square(*this, move.from, move.piece);
-
+		clear_square(*this, move.from, move.piece);
 		if (move.captured != PieceType::none)
-			set_square(*this, move.to, move.captured);
+			clear_square(*this, move.to, move.captured);
+		set_square(*this, move.to, move.piece);
 	}
+
+	castling_rights = move.castling_rights;
+	en_passant_square = move.enpassant_sq;
+	halfmove_clock = move.halfmove_clock;
+	if (current_turn == Color::black)
+		++fullmove_number;
+	current_turn = (current_turn == Color::white) ? Color::black : Color::white;
+	zobrist_key = Zobrist::calculate_hash(*this);
 }
 
 void Position::undo_move(const Move& move, const MoveState& state)
@@ -211,6 +217,8 @@ void Position::undo_move(const Move& move, const MoveState& state)
 		if (move.captured != PieceType::none)
 			set_square(*this, move.to, move.captured);
 	}
+
+	zobrist_key = Zobrist::calculate_hash(*this);
 }
 
 MoveList& Position::get_legal_moves()

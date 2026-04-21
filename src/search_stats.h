@@ -60,7 +60,7 @@ struct SearchStats
             result += " pv";
             for (const auto& move : pv)
             {
-                result += " " + square_to_string(move.from) + square_to_string(move.to);
+                result += " " + move_to_uci(move);
             }
         }
 

@@ -73,3 +73,32 @@ struct Move
 		std::cout << move_str << "\n";
 	}
 };
+
+inline char promotion_suffix(MoveType type)
+{
+	switch (type)
+	{
+	case MoveType::promotion_queen:
+	case MoveType::promotion_queen_capture:
+		return 'q';
+	case MoveType::promotion_rook:
+	case MoveType::promotion_rook_capture:
+		return 'r';
+	case MoveType::promotion_bishop:
+	case MoveType::promotion_bishop_capture:
+		return 'b';
+	case MoveType::promotion_knight:
+	case MoveType::promotion_knight_capture:
+		return 'n';
+	default:
+		return '\0';
+	}
+}
+
+inline std::string move_to_uci(const Move& move)
+{
+	std::string uci = square_to_string(move.from) + square_to_string(move.to);
+	if (const char suffix = promotion_suffix(move.type); suffix != '\0')
+		uci.push_back(suffix);
+	return uci;
+}

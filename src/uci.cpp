@@ -76,24 +76,60 @@ void Uci::run()
 		}
 		else if (token == "go" && position_init)
 		{
-			int depth = -1;
-			int movetime = -1;
-			int wtime = -1, btime = -1;
-			int winc = 0, binc = 0;
+			SearchLimits limits{};
+			limits.depth = 0;
+			bool has_go_limit = false;
 
 			while (iss >> token)
 			{
-				if (token == "depth") iss >> depth;
-				else if (token == "movetime") iss >> movetime;
-				else if (token == "wtime") iss >> wtime;
-				else if (token == "btime") iss >> btime;
-				else if (token == "winc") iss >> winc;
-				else if (token == "binc") iss >> binc;
+				if (token == "depth")
+				{
+					iss >> limits.depth;
+					has_go_limit = true;
+				}
+				else if (token == "movetime")
+				{
+					iss >> limits.movetime_ms;
+					has_go_limit = true;
+				}
+				else if (token == "wtime")
+				{
+					iss >> limits.wtime_ms;
+					has_go_limit = true;
+				}
+				else if (token == "btime")
+				{
+					iss >> limits.btime_ms;
+					has_go_limit = true;
+				}
+				else if (token == "winc")
+				{
+					iss >> limits.winc_ms;
+					has_go_limit = true;
+				}
+				else if (token == "binc")
+				{
+					iss >> limits.binc_ms;
+					has_go_limit = true;
+				}
+				else if (token == "movestogo")
+				{
+					iss >> limits.movestogo;
+					has_go_limit = true;
+				}
+				else if (token == "infinite")
+				{
+					limits.infinite = true;
+					has_go_limit = true;
+				}
+				else if (token == "ponder") continue;
 
 				// debug tools
 				else if (token == "perft")
 				{
-					auto d = std::stoi(token);
+					int d = 0;
+					if (!(iss >> d))
+						continue;
 					size_t nodes = 0;
 					for (int i{ 1 }; i <= d; ++i)
 					{
@@ -113,37 +149,10 @@ void Uci::run()
 				}
 			}
 
-			int time_for_move = 0;
+			if (!has_go_limit)
+				limits.infinite = true;
 
-			if (movetime != -1)
-			{
-				time_for_move = movetime;
-			}
-			else if (wtime != -1)
-			{
-				if (position.current_turn == Color::white)
-					time_for_move = wtime / 30 + winc;
-				else
-					time_for_move = btime / 30 + binc;
-			}
-
-			if (time_for_move < 50 && time_for_move != 0) depth = 4;
-			else if (time_for_move != 0) depth = 5;
-			std::cout << "depth: " << depth << std::endl;
-			if (depth != -1)
-			{
-				engine.search(position, depth);
-			}
-			else if (time_for_move > 0)
-			{
-				std::cout << "searching by time\n";
-				engine.search_time(position, time_for_move);
-			}
-			else
-			{
-				std::cout << "searching by depth\n";
-				// engine.search_depth(position, 4);
-			}
+			engine.search(position, limits);
 		}
 		else if (token == "quit")
 		{
