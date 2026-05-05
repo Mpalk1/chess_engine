@@ -1,10 +1,12 @@
 #include "engine.h"
+#include "evaluation.h"
 #include "generator.h"
 #include "zobrist.h"
 #include <algorithm>
 #include <bit>
-#include <limits>
 #include <chrono>
+#include <iostream>
+#include <limits>
 
 namespace
 {
@@ -12,20 +14,20 @@ int move_piece_value(PieceType piece)
 {
     switch (piece)
     {
-    case PieceType::white_pawn:
-    case PieceType::black_pawn:
+    case PieceType::WhitePawn:
+    case PieceType::BlackPawn:
         return 100;
-    case PieceType::white_knight:
-    case PieceType::black_knight:
+    case PieceType::WhiteKnight:
+    case PieceType::BlackKnight:
         return 320;
-    case PieceType::white_bishop:
-    case PieceType::black_bishop:
+    case PieceType::WhiteBishop:
+    case PieceType::BlackBishop:
         return 330;
-    case PieceType::white_rook:
-    case PieceType::black_rook:
+    case PieceType::WhiteRook:
+    case PieceType::BlackRook:
         return 500;
-    case PieceType::white_queen:
-    case PieceType::black_queen:
+    case PieceType::WhiteQueen:
+    case PieceType::BlackQueen:
         return 900;
     default:
         return 0;
@@ -59,20 +61,20 @@ int move_order_score(const Move& move, const Move* tt_move)
         score += 100'000;
         switch (move.type)
         {
-        case MoveType::promotion_queen:
-        case MoveType::promotion_queen_capture:
+        case MoveType::PromotionQueen:
+        case MoveType::PromotionQueenCapture:
             score += 4'000;
             break;
-        case MoveType::promotion_rook:
-        case MoveType::promotion_rook_capture:
+        case MoveType::PromotionRook:
+        case MoveType::PromotionRookCapture:
             score += 3'000;
             break;
-        case MoveType::promotion_bishop:
-        case MoveType::promotion_bishop_capture:
+        case MoveType::PromotionBishop:
+        case MoveType::PromotionBishopCapture:
             score += 2'000;
             break;
-        case MoveType::promotion_knight:
-        case MoveType::promotion_knight_capture:
+        case MoveType::PromotionKnight:
+        case MoveType::PromotionKnightCapture:
             score += 1'000;
             break;
         default:
@@ -95,8 +97,7 @@ int move_order_score(const Move& move, const Move* tt_move)
 std::vector<Move> ordered_moves(const MoveList& move_list, const Move* tt_move)
 {
     std::vector<Move> moves(move_list.begin(), move_list.begin() + move_list.count);
-    std::stable_sort(moves.begin(), moves.end(), [tt_move](const Move& lhs, const Move& rhs)
-    {
+    std::stable_sort(moves.begin(), moves.end(), [tt_move](const Move& lhs, const Move& rhs) {
         return move_order_score(lhs, tt_move) > move_order_score(rhs, tt_move);
     });
     return moves;
@@ -128,18 +129,17 @@ std::vector<Move> legal_prefix_from_root(const Position& root, const std::vector
             break;
 
         legal_pv.push_back(matched);
-        MoveState state{};
+        GameState state{};
         pos.apply_move(matched, state);
     }
 
     return legal_pv;
 }
-}
+} 
 
 Engine::Engine()
 {
     thread_count = std::max(1u, std::thread::hardware_concurrency());
-    // Initialize zobrist hashing with a seed
     Zobrist::initialize(0x9D2C5680A3F47B1CULL);
 }
 
@@ -160,7 +160,6 @@ void Engine::search(Position& position, const SearchLimits& limits)
     work_done.store(false);
     clear_transposition_table();
 
-    // Initialize search stats
     stats = SearchStats();
     stats.start_time = std::chrono::steady_clock::now();
     last_info_time = 0;
@@ -190,8 +189,8 @@ int Engine::calculate_time_budget_ms(const Position& position, const SearchLimit
     if (limits.movetime_ms > 0)
         return limits.movetime_ms;
 
-    const int time_left = (position.current_turn == Color::white) ? limits.wtime_ms : limits.btime_ms;
-    const int increment = (position.current_turn == Color::white) ? limits.winc_ms : limits.binc_ms;
+    const int time_left = (position.state.turn == Color::White) ? limits.wtime_ms : limits.btime_ms;
+    const int increment = (position.state.turn == Color::White) ? limits.winc_ms : limits.binc_ms;
 
     if (time_left <= 0)
         return 0;
@@ -262,7 +261,7 @@ void Engine::search_worker(Position& position, SearchLimits limits)
 
         TTEntry root_tt_entry{};
         const Move* tt_move = nullptr;
-        if (transposition_table.probe(position.zobrist_key, root_tt_entry) &&
+        if (transposition_table.probe(position.state.zobrist_key, root_tt_entry) &&
             contains_move(depth_root_moves, root_tt_entry.best_move))
         {
             tt_move = &root_tt_entry.best_move;
@@ -277,7 +276,7 @@ void Engine::search_worker(Position& position, SearchLimits limits)
                 break;
             }
 
-            MoveState state{};
+            GameState state{};
             position.apply_move(move, state);
 
             std::vector<Move> pv;
@@ -311,7 +310,6 @@ void Engine::search_worker(Position& position, SearchLimits limits)
             stats.pv = legal_prefix_from_root(position, depth_best_pv);
         }
 
-        // Keep UCI info streaming at every fully completed depth.
         stats.depth = depth;
         output_info(true);
 
@@ -327,16 +325,16 @@ int Engine::get_piece_value(Position& position, int i)
 {
     int eval{0};
     auto piece{position.bitboards[i].get()};
-    //count pieces values
     const auto piece_count = std::popcount(piece);
-    if (piece_count == 0) return 0;
-    const auto piece_val = pieces_values.at(i) * piece_count;
-    eval += piece_val;
-    //temporary: bonus for piece placement
+    if (piece_count == 0)
+        return 0;
+
+    eval += Evaluation::PIECE_VALUES.at(i) * piece_count;
+
     while (piece)
     {
         int sq = std::countr_zero(piece);
-        eval += piece_square_tables[i][63 - sq];
+        eval += Evaluation::PIECE_SQUARE_TABLES[i][63 - sq];
         piece &= piece - 1;
     }
     return eval;
@@ -354,11 +352,7 @@ int Engine::evaluate(Position& position)
 
     eval += static_cast<int>(position.get_pseudo_legal_moves().count * 10);
 
-    //to add:
-    //count mobility of pieces
-    //count squares attacked
-
-    return position.current_turn == Color::white ? eval : -eval; // flipping the sign because searching is from the current players perspective
+    return position.state.turn == Color::White ? eval : -eval;
 }
 
 int Engine::minimax(Position& position, int depth, int alpha, int beta, std::vector<Move>& pv, int ply)
@@ -369,24 +363,20 @@ int Engine::minimax(Position& position, int depth, int alpha, int beta, std::vec
         return 0;
     }
 
-    // Track nodes
     stats.nodes++;
     stats.seldepth = std::max(stats.seldepth, ply);
 
     const int alpha_orig = alpha;
 
-    // Probe transposition table. Only trust entries with a legal stored move.
     TTEntry tt_entry;
     MoveList legal_moves{};
     Generator::get_moves(position, legal_moves);
-    const bool has_tt = transposition_table.probe(position.zobrist_key, tt_entry);
+    const bool has_tt = transposition_table.probe(position.state.zobrist_key, tt_entry);
     const bool tt_move_legal = has_tt && contains_move(legal_moves, tt_entry.best_move);
     if (has_tt && tt_move_legal)
     {
-        // Check if the stored depth is sufficient
         if (tt_entry.depth >= depth)
         {
-            // Return the score based on the flag
             if (tt_entry.flag == ScoreFlag::Exact)
             {
                 pv.clear();
@@ -395,10 +385,9 @@ int Engine::minimax(Position& position, int depth, int alpha, int beta, std::vec
             }
             if (tt_entry.flag == ScoreFlag::LowerBound)
                 alpha = std::max(alpha, tt_entry.score);
-            else // UpperBound
+            else 
                 beta = std::min(beta, tt_entry.score);
 
-            // Alpha-beta pruning
             if (alpha >= beta)
             {
                 pv.clear();
@@ -415,13 +404,13 @@ int Engine::minimax(Position& position, int depth, int alpha, int beta, std::vec
     }
 
     int best = std::numeric_limits<int>::min();
-    ScoreFlag flag = ScoreFlag::UpperBound; // Assume upper bound
+    ScoreFlag flag = ScoreFlag::UpperBound;
     Move best_move_found{};
     std::vector<Move> best_pv;
 
     TTEntry move_order_entry{};
     const Move* tt_move = nullptr;
-    if (transposition_table.probe(position.zobrist_key, move_order_entry) &&
+    if (transposition_table.probe(position.state.zobrist_key, move_order_entry) &&
         contains_move(legal_moves, move_order_entry.best_move))
     {
         tt_move = &move_order_entry.best_move;
@@ -442,7 +431,7 @@ int Engine::minimax(Position& position, int depth, int alpha, int beta, std::vec
             break;
         }
 
-        MoveState state{};
+        GameState state{};
         position.apply_move(move, state);
 
         std::vector<Move> child_pv;
@@ -464,7 +453,7 @@ int Engine::minimax(Position& position, int depth, int alpha, int beta, std::vec
         alpha = std::max(alpha, best);
         if (alpha >= beta)
         {
-            flag = ScoreFlag::LowerBound; // Beta cutoff - lower bound
+            flag = ScoreFlag::LowerBound;
             break;
         }
     }
@@ -472,7 +461,6 @@ int Engine::minimax(Position& position, int depth, int alpha, int beta, std::vec
     if (iteration_aborted)
         return 0;
 
-    // Determine the flag for storing
     if (best <= alpha_orig)
         flag = ScoreFlag::UpperBound;
     else if (best >= beta)
@@ -480,8 +468,7 @@ int Engine::minimax(Position& position, int depth, int alpha, int beta, std::vec
     else
         flag = ScoreFlag::Exact;
 
-    // Store in transposition table
-    transposition_table.store(position.zobrist_key, best, depth, flag, best_move_found);
+    transposition_table.store(position.state.zobrist_key, best, depth, flag, best_move_found);
 
     pv = best_pv;
     return best;
@@ -489,11 +476,10 @@ int Engine::minimax(Position& position, int depth, int alpha, int beta, std::vec
 
 void Engine::output_info(bool force) const
 {
-    // Only output if enough time has passed (throttle to avoid spam)
     uint64_t current_time = stats.elapsed_ms();
     if (!force && current_time - last_info_time < 100)
-        return;  // Wait at least 100ms between info lines
-    
+        return;
+
     const_cast<Engine*>(this)->last_info_time = current_time;
     std::cout << stats.to_info_string() << std::endl;
 }
@@ -508,7 +494,8 @@ void Engine::stop()
 void Engine::reset()
 {
     should_work.store(false);
-    if (worker.joinable()) worker.join();
+    if (worker.joinable())
+        worker.join();
     best_move = Move{};
     work_done.store(false);
     should_work.store(true);

@@ -2,13 +2,13 @@ import subprocess
 import csv
 import chess
 
-# --- CONFIGURATION ---
+
 PATH_TO_BINARY = '../build/chess_engine'
 CSV_PATH = 'fen_testing_data.csv'
 MAX_DEPTH = 4
 CSV_LIMIT = 10000
 
-# Standard stress-test positions from ChessProgramming Wiki
+
 TEST_SUITES = [
     {"name": "Initial Position", "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"},
     {"name": "Kiwipete (Castling/EP)", "fen": "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"},
@@ -30,11 +30,11 @@ def get_engine_perft(fen, depth):
             bufsize=1
         )
 
-        # Send commands to your engine
+        
         commands = f"position fen {fen}\ngo perft {depth}\n"
         stdout, stderr = process.communicate(input=commands, timeout=30)
 
-        # Parse "Nodes searched: <number>"
+        
         for line in stdout.splitlines():
             if "Nodes searched:" in line:
                 return int(line.split(":")[-1].strip())
@@ -67,12 +67,12 @@ def run_test(fen, label):
         if expected != actual:
             break
 
-# 1. Run Standard Test Suite
+
 print("Starting Standard Suite...")
 for test in TEST_SUITES:
     run_test(test['fen'], test['name'])
 
-# 2. Run Lichess CSV Tests
+
 print(f"\nStarting Lichess CSV Tests (Top {CSV_LIMIT})...")
 try:
     with open(CSV_PATH, 'r') as f:
