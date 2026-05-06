@@ -2,7 +2,6 @@
 
 #include "types.h"
 #include <array>
-#include <cstdint>
 
 class Zobrist
 {
